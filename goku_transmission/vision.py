@@ -54,7 +54,8 @@ class Vision:
     """Runs the three models on a BGR frame. ``video=True`` uses MediaPipe's
     tracking mode (faster and steadier for a live stream)."""
 
-    def __init__(self, video: bool = True, hand_conf: float = 0.5, face_conf: float = 0.5):
+    def __init__(self, video: bool = True, hand_conf: float = 0.5, face_conf: float = 0.5, max_width: int = 640):
+        self.max_width = max_width
         import mediapipe as mp
         from mediapipe.tasks import python as mpt
         from mediapipe.tasks.python import vision as V
@@ -66,7 +67,7 @@ class Vision:
         B = mpt.BaseOptions
         self.hands = V.HandLandmarker.create_from_options(V.HandLandmarkerOptions(
             base_options=B(model_asset_path=str(d / "hand_landmarker.task")), running_mode=mode,
-            num_hands=2, min_hand_detection_confidence=hand_conf, min_hand_presence_confidence=hand_conf,
+            num_hands=1, min_hand_detection_confidence=hand_conf, min_hand_presence_confidence=hand_conf,
             min_tracking_confidence=0.5))
         self.faces = V.FaceDetector.create_from_options(V.FaceDetectorOptions(
             base_options=B(model_asset_path=str(d / "blaze_face_short_range.tflite")), running_mode=mode,
@@ -75,6 +76,8 @@ class Vision:
             base_options=B(model_asset_path=str(d / "selfie_segmenter_landscape.tflite")), running_mode=mode,
             output_confidence_masks=True, output_category_mask=False))
         self._t0 = time.monotonic()
+        self._n = 0
+        self._last_face = None
         self._last_ts = -1
 
     def _ts(self, ts_ms: Optional[int] = None) -> int:
@@ -102,21 +105,29 @@ class Vision:
 
     def observe(self, frame_bgr: np.ndarray, ts_ms: Optional[int] = None) -> Observation:
         h, w = frame_bgr.shape[:2]
-        img = self._image(frame_bgr)
+        small = frame_bgr
+        if w > self.max_width:   # models work at <=256-ish px anyway; this just saves copying
+            small = cv2.resize(frame_bgr, (self.max_width, int(h * self.max_width / w)), interpolation=cv2.INTER_AREA)
+        sh, sw = small.shape[:2]
+        img = self._image(small)
         ts = self._ts(ts_ms)
+        self._n += 1
+        run_face = not self.video or self._n % 3 == 1   # the face barely moves; every 3rd frame is plenty
         if self.video:
             hr = self.hands.detect_for_video(img, ts)
-            fr = self.faces.detect_for_video(img, ts)
+            fr = self.faces.detect_for_video(img, ts) if run_face else None
             sr = self.seg.segment_for_video(img, ts)
         else:
             hr, fr, sr = self.hands.detect(img), self.faces.detect(img), self.seg.segment(img)
 
         hands = [[(p.x, p.y) for p in lm] for lm in hr.hand_landmarks]
-        face = None
-        if fr.detections:
+        face = self._last_face if fr is None else None
+        if fr is not None and fr.detections:
             best = max(fr.detections, key=lambda d: d.bounding_box.width * d.bounding_box.height)
             b = best.bounding_box
-            face = (b.origin_x / w, b.origin_y / h, b.width / w, b.height / h)
+            face = (b.origin_x / sw, b.origin_y / sh, b.width / sw, b.height / sh)
+        if fr is not None:
+            self._last_face = face
         return Observation(hands, face, self._mask(sr, (h, w)))
 
     def close(self) -> None:

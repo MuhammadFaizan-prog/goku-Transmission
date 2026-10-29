@@ -39,16 +39,41 @@ class FakeVision:
 
 
 def test_background_learns_room_and_inpaints_hidden_pixels():
-    bg = BackgroundModel(dilate_px=0)
-    bg.update(frame_with_person(), person_mask())
-    plate = bg.render()
+    bg = BackgroundModel()
+    bg.update(frame_with_person(), person_mask(), 0.0)
+    plate = bg.render(0.0)
     # pixels behind the person were never seen -> inpainted, no person colour left
     assert not np.any(np.all(plate[PERSON_BOX] == (200, 200, 255), axis=-1))
-    # visible room is copied exactly
-    assert np.array_equal(plate[:, :100], ROOM[:, :100])
-    # once the person leaves, the hidden area is learned for real
-    bg.update(ROOM, np.zeros((H, W), np.float32))
-    assert np.array_equal(bg.render(), ROOM)
+    # visible room far from the person is copied exactly
+    assert np.array_equal(plate[:, :90], ROOM[:, :90])
+    assert not bg.clean
+
+
+def test_clean_snapshot_when_room_is_empty():
+    bg = BackgroundModel(empty_hold_s=0.5)
+    bg.update(frame_with_person(), person_mask(), 0.0)
+    for i in range(1, 25):                       # you step out for 0.8s
+        bg.update(ROOM, np.zeros((H, W), np.float32), i / 30)
+    assert bg.clean and bg.coverage() == 1.0
+    assert np.array_equal(bg.render(1.0), ROOM)
+
+
+def test_no_ghost_after_clean_snapshot():
+    bg = BackgroundModel()
+    bg.set_plate(ROOM)
+    for i in range(300):                         # you sit there for 10s
+        bg.update(frame_with_person(), person_mask(), i / 30)
+    diff = np.abs(bg.render(10.0).astype(int) - ROOM.astype(int))
+    assert diff[PERSON_BOX].max() == 0           # nothing of you leaked into the room
+
+
+def test_learning_pauses_while_hands_move():
+    bg = BackgroundModel()
+    bg.update(frame_with_person(), person_mask(), 0.0)
+    before = bg.plate.copy()
+    noisy = np.full_like(ROOM, 7)
+    bg.update(noisy, person_mask(), 0.1, frozen=True)
+    assert np.array_equal(bg.plate, before)
 
 
 def test_effect_endpoints():
@@ -112,3 +137,31 @@ def test_manual_toggle():
     for i in range(1, 20):
         eng.process(frame_with_person(), i / 30)
     assert eng.state == State.GONE
+
+
+def test_refuses_to_teleport_before_room_is_captured():
+    v = FakeVision()
+    events = []
+    eng = GokuEngine(v, hold_s=0.5, on_event=events.append)
+    v.pose = True
+    for i in range(30):
+        eng.process(frame_with_person(), i / 30)
+    assert eng.state == State.PRESENT and events == ["need_room"]
+
+
+def test_room_captured_when_user_steps_out_then_teleports():
+    v = FakeVision()
+    events = []
+    eng = GokuEngine(v, hold_s=0.5, anim_s=0.5, on_event=events.append)
+    t = 0.0
+    v.present = False
+    for _ in range(30):                     # 1s of empty room
+        eng.process(ROOM, t)
+        t += 1 / 30
+    assert eng.bg.clean
+    v.present, v.pose = True, True
+    for _ in range(60):
+        eng.process(frame_with_person(), t)
+        t += 1 / 30
+    assert eng.state == State.GONE
+    assert np.array_equal(eng.process(frame_with_person(), t), ROOM)

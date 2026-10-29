@@ -28,8 +28,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--hold", type=float, default=0.5, help="seconds to hold the pose (default 0.5)")
-    p.add_argument("--anim", type=float, default=0.9, help="teleport animation length in seconds")
+    p.add_argument("--anim", type=float, default=0.7, help="teleport animation length in seconds (default 0.7)")
+    p.add_argument("--sound", help="play this .wav on teleport instead of the built-in one")
     p.add_argument("--background", help="use this image as the empty-room plate instead of learning it")
+    p.add_argument("--allow-guess", action="store_true",
+                   help="allow teleporting before the empty room was captured (the room behind you is guessed)")
     p.add_argument("--no-virtual", action="store_true", help="preview only, don't open a virtual camera")
     p.add_argument("--virtual-backend", help="pyvirtualcam backend: obs, unitycapture, v4l2loopback, akvcam")
     p.add_argument("--no-preview", action="store_true", help="no preview window")
@@ -44,13 +47,26 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 def _events(mute: bool):
     labels = {"vanishing": "Instant Transmission... gone", "appearing": "...and back",
-              "gone": "  (you are invisible)", "present": "  (you are visible)"}
+              "gone": "  (you are invisible)", "present": "  (you are visible)",
+              "need_room": "Pose seen, but I haven't seen your empty room yet. Step out of frame for 1 second, then try again."}
 
     def handle(e: str):
         print(f"[goku] {labels.get(e, e)}")
         if e in ("vanishing", "appearing") and not mute:
             sound.play()
     return handle
+
+
+def _banner(img, text, color):
+    """Preview-only hint (never sent to the meeting)."""
+    h, w = img.shape[:2]
+    cv2.rectangle(img, (0, 0), (w, 44), color, -1)
+    cv2.putText(img, text, (14, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+
+
+def _hold_bar(img, p):
+    h, w = img.shape[:2]
+    cv2.rectangle(img, (0, h - 10), (int(w * p), h), (255, 230, 120), -1)
 
 
 def _open_virtual(args, w, h):
@@ -69,6 +85,35 @@ def _open_virtual(args, w, h):
         return None
 
 
+class LatestFrame:
+    """Reads the webcam on its own thread and always hands out the newest frame,
+    so a slow frame never makes the feed lag behind or look frozen."""
+
+    def __init__(self, cap):
+        import threading
+        self.cap, self.frame, self.ok, self.seq = cap, None, True, 0
+        self._cv = threading.Condition()
+        self._t = threading.Thread(target=self._run, daemon=True)
+        self._t.start()
+
+    def _run(self):
+        while self.ok:
+            ok, f = self.cap.read()
+            with self._cv:
+                self.ok, self.frame = ok, f
+                self.seq += 1
+                self._cv.notify_all()
+
+    def read(self, last_seq):
+        with self._cv:
+            self._cv.wait_for(lambda: self.seq != last_seq or not self.ok, timeout=2.0)
+            return self.ok and self.frame is not None, self.frame, self.seq
+
+    def stop(self):
+        self.ok = False
+        self._t.join(timeout=1.0)
+
+
 def _open_webcam(args):
     backend = cv2.CAP_DSHOW if sys.platform.startswith("win") else cv2.CAP_ANY
     cap = cv2.VideoCapture(args.camera, backend)
@@ -82,8 +127,10 @@ def _open_webcam(args):
 
 def _build_engine(args, video=True):
     from .vision import Vision
+    sound.set_custom(args.sound)
     vision = Vision(video=video)
-    eng = GokuEngine(vision, hold_s=args.hold, anim_s=args.anim, on_event=_events(args.mute), debug=args.debug)
+    eng = GokuEngine(vision, hold_s=args.hold, anim_s=args.anim, on_event=_events(args.mute), debug=args.debug,
+                     require_clean_room=not args.allow_guess)
     if args.background:
         img = cv2.imread(args.background)
         if img is None:
@@ -98,51 +145,66 @@ def run_live(args) -> int:
     if not ok:
         raise SystemExit("[camera] webcam opened but returned no frames.")
     h, w = frame.shape[:2]
+    reader = LatestFrame(cap)
+    seq = 0
     eng = _build_engine(args)
     vcam = _open_virtual(args, w, h)
-    print("\n  Pose: index + middle finger together on your forehead, hold ~%.1fs.\n"
-          "  Do it again to come back.  Keys (preview window): T toggle  B relearn room  D debug  Q quit\n"
-          "  Tip: step out of frame for 2-3 seconds once, so the room behind you is learned perfectly.\n"
-          % args.hold)
+    print("\n  1. Step out of frame for 1 second so the empty room is captured.\n"
+          "  2. Sit down. Index + middle finger together on your forehead, hold ~%.1fs.\n"
+          "  3. Lower your hand, do it again to come back.\n"
+          "  Keys (preview window): T teleport  B recapture room  D debug  Q quit\n" % args.hold)
     if not args.no_preview:
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
-    last_cov, last_dbg = -1, 0.0
+    last_dbg, room_ok, captured_at = 0.0, None, -1e9
+    n_frames, t_fps = 0, time.monotonic()
     try:
         while True:
-            ok, frame = cap.read()
+            ok, frame, seq = reader.read(seq)
             if not ok:
                 print("[camera] lost the webcam feed.")
                 break
             now = time.monotonic()
             out = eng.process(frame, now)
 
-            cov = int(eng.bg.coverage() * 100)
-            if cov // 10 != last_cov // 10:
-                print(f"[room] background learned: {cov}%")
-                last_cov = cov
-            if args.debug and now - last_dbg > 0.5 and eng.last_reasons:
-                print(f"[debug] pose={eng.last_pose} hold={eng.trigger.progress(now):.0%} {eng.last_reasons}")
+            if eng.bg.clean != room_ok:
+                room_ok = eng.bg.clean
+                print("[room] empty room captured. Sit down and teleport!" if room_ok else
+                      "[room] step out of frame for 1 second so I can capture the empty room...")
+                if room_ok:
+                    captured_at = now
+            n_frames += 1
+            if args.debug and now - last_dbg > 0.5:
+                fps = n_frames / max(1e-6, now - t_fps)
+                n_frames, t_fps = 0, now
+                print(f"[debug] {fps:4.1f} fps  state={eng.state.value}  pose={eng.last_pose} "
+                      f"hold={eng.trigger.progress(now):.0%} {eng.last_reasons}")
                 last_dbg = now
 
             if vcam is not None:
                 vcam.send(out)
             if not args.no_preview:
-                cv2.imshow(WINDOW, cv2.flip(out, 1))   # mirrored like a normal selfie view
+                view = cv2.flip(out, 1)   # mirrored like a normal selfie view (the meeting gets the unmirrored one)
+                if not eng.bg.clean:
+                    _banner(view, "Step out of frame for 1 sec to capture your room", (40, 40, 220))
+                elif now - captured_at < 2.5:
+                    _banner(view, "Room captured - two fingers on your forehead to teleport", (60, 160, 60))
+                elif eng.trigger.progress(now) > 0 and eng.state in (State.PRESENT, State.GONE):
+                    _hold_bar(view, eng.trigger.progress(now))
+                cv2.imshow(WINDOW, view)
                 k = cv2.waitKey(1) & 0xFF
                 if k in (ord("q"), 27):
                     break
                 if k == ord("t"):
                     eng.toggle(now)
                 if k == ord("b"):
-                    eng.bg = type(eng.bg)()
+                    eng.bg.reset()
                     print("[room] relearning background...")
                 if k == ord("d"):
                     args.debug = not args.debug
-            if vcam is not None:
-                vcam.sleep_until_next_frame()
     except KeyboardInterrupt:
         pass
     finally:
+        reader.stop()
         cap.release()
         if vcam is not None:
             vcam.close()
@@ -182,6 +244,7 @@ def self_test() -> int:
     print(f"goku-transmission {__version__}")
     from .vision import Vision
     from .effects import teleport_frame
+    from .sound import sound_path
     v = Vision(video=False)
     frame = np.full((360, 640, 3), 120, np.uint8)
     obs = v.observe(frame)
@@ -190,6 +253,7 @@ def self_test() -> int:
     mask[80:330, 260:380] = 1
     teleport_frame(frame, frame, mask, 0.5)
     print("  effects ok")
+    print(f"  teleport sound: {sound_path()}")
     try:
         import pyvirtualcam  # noqa: F401
         print("  pyvirtualcam installed")

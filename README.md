@@ -26,8 +26,8 @@ A virtual webcam that watches for Goku's *Instant Transmission* pose and telepor
 | | |
 |---|---|
 | 🫡 **The pose** | Index and middle finger straight and **together**, ring and pinky curled, fingertips on your **forehead**. Hold for half a second. |
-| ⚡ **The teleport** | A cyan aura charges, comic speed lines run down your silhouette, you squeeze into a beam of light and blink out. About 0.9s, all drawn in code. |
-| 🏠 **The empty room** | The meeting sees your real room without you in it. It's learned live, not a frozen screenshot. |
+| ⚡ **The teleport** | Vertical ki streaks run up your body, you flicker in and out like the anime, and you're gone, with a few streaks hanging in the air. 0.7s, all drawn in code, with a *shyun* sound. |
+| 🏠 **The empty room** | Step out of frame for 1 second and your real empty room is captured. While you're gone, that's what the meeting sees. |
 | 🔁 **Coming back** | Lower your hand, do the pose again, and the animation plays in reverse. |
 | 🔒 **Private** | Everything runs on your machine. No uploads, no accounts, no recording. |
 
@@ -64,10 +64,12 @@ MediaPipe's hand landmarker gives 21 points per hand. A finger counts as *straig
 Hold for 0.5s (one dropped frame is forgiven). After a teleport you have to lower your hand before the next one counts, so holding the pose never makes you flicker in and out.
 
 **3. The empty room**: `goku_transmission/background.py`
-Every frame, the selfie segmenter marks which pixels are you. Every pixel that *isn't* you updates a running "room plate", so it keeps up with changing light. Pixels that have always been behind you get filled with OpenCV inpainting. Step out of frame for 2 to 3 seconds once and the plate is perfect.
+When the segmenter sees nobody for 0.7s (you stepped out), that frame becomes the room plate. After that it only drifts slowly with the lighting, using pixels well away from you, and learning pauses while your hands move so a fast arm can never paint a ghost into the room. Until the room is captured, teleporting is blocked with a hint, because a guessed room looks like a smeared ghost (`--allow-guess` overrides this).
 
 **4. The teleport**: `goku_transmission/effects.py`
-One function of progress `t ∈ [0, 1]`: **charge** (cyan tint, edge glow, animated vertical speed lines) → **zip** (your silhouette squeezes horizontally into a bright line) → **flash** → **trail** (a fading vertical streak). Reappearing just runs `t` backwards.
+One function of progress `t ∈ [0, 1]`: **charge** (vertical cyan/white streaks scroll up over your silhouette, rim glow) → **flicker** (you blink on, off, on, off with a tiny jitter, like the anime) → **gone** (the streaks flare and fade where you stood). Reappearing runs `t` backwards. It only touches your bounding box and drops to half resolution for big boxes, so it costs a few milliseconds.
+
+**Speed.** The webcam is read on its own thread (always the newest frame, never a backlog), the models run on a 640 px copy, face detection runs every 3rd frame, and only one hand is tracked. In testing it held about 28 to 30 fps at 720p on a modest ARM CPU, including during the animation.
 
 **5. Into the meeting**: `pyvirtualcam`
 Frames go to a virtual webcam driver (OBS Virtual Camera on Windows/macOS, v4l2loopback on Linux). Meeting apps see it as a normal camera.
@@ -102,9 +104,11 @@ python -m goku_transmission
 First run downloads three small MediaPipe models (~8 MB) into `models/`.
 
 ### 3. Teleport
-1. A preview window opens. Step out of frame for 2 to 3 seconds so the room is learned (the terminal shows `background learned: 100%`).
-2. Sit back down. Two fingers together on your forehead, hold ½ second. ⚡
+1. A preview window opens with a red banner. **Step out of frame for 1 second**; it turns green: *Room captured*.
+2. Sit back down. Two fingers together on your forehead and hold ½ second (a cyan bar fills at the bottom of the preview). ⚡
 3. Lower your hand. Do it again to come back.
+
+> The terminal prints a few `W0000 ... landmark_projection` / `inference_runner` warnings at start. They come from MediaPipe and are harmless.
 
 ---
 
@@ -123,13 +127,15 @@ First run downloads three small MediaPipe models (~8 MB) into `models/`.
 
 ## ⌨️ Controls & options
 
-**Preview window keys:** `T` teleport manually · `B` relearn the room · `D` toggle debug output · `Q` / `Esc` quit
+**Preview window keys:** `T` teleport manually · `B` recapture the room · `D` toggle debug output (shows fps too) · `Q` / `Esc` quit
 
 ```bash
 python -m goku_transmission --camera 1                # pick another webcam
 python -m goku_transmission --width 1920 --height 1080 --fps 30
 python -m goku_transmission --hold 0.8                # require a longer hold
-python -m goku_transmission --anim 1.2                # slower, more dramatic teleport
+python -m goku_transmission --anim 1.0                # slower, more dramatic teleport
+python -m goku_transmission --sound shyun.wav         # your own teleport sound (.wav)
+python -m goku_transmission --allow-guess             # teleport before the room was captured
 python -m goku_transmission --background room.jpg     # use a photo of your empty room
 python -m goku_transmission --virtual-backend unitycapture   # Windows alternative to OBS
 python -m goku_transmission --no-virtual              # preview only, no driver needed
@@ -139,7 +145,7 @@ python -m goku_transmission --input me.mp4 --output out.mp4  # process a recorde
 python -m goku_transmission --self-test               # check the install without a webcam
 ```
 
-The teleport "zip" sound is synthesized at runtime and plays on **your** speakers only. It never goes into the call.
+**Sound:** a *shyun* is synthesized at runtime, so no copyrighted audio ships with the repo. Want the real anime sound? Save it as `sounds/teleport.wav` (gitignored, stays on your PC) or pass `--sound file.wav`. It plays on **your** speakers only and never goes into the call.
 
 ---
 
@@ -153,7 +159,7 @@ python -m pytest -q
 | Suite | What it proves | Needs |
 |---|---|---|
 | `tests/test_gesture.py` | The pose is detected; peace sign, open palm, one finger and hand-away-from-forehead are rejected; hold, dropped-frame and re-arm timing | nothing |
-| `tests/test_engine.py` | Full present → vanishing → gone → appearing → present cycle; the meeting sees exactly the empty room while gone; holding the pose doesn't bounce you back; the room plate learns and inpaints | nothing |
+| `tests/test_engine.py` | Full present → vanishing → gone → appearing → present cycle; the meeting sees exactly the empty room while gone; holding the pose doesn't bounce you back; room capture on step-out; no ghost after 10s of sitting; learning pauses while hands move; teleport blocked until the room is captured | nothing |
 | `tests/test_real_models.py` | The real MediaPipe models load and run | mediapipe (auto-skips without OpenGL) |
 
 **Test it on yourself without a meeting:**
@@ -185,7 +191,7 @@ Run with `--debug`. Usually: fingers too spread (`together: False`; keep index a
 <details>
 <summary><b>A ghost or blur where I was sitting</b></summary>
 
-The room behind you was never seen, so it was inpainted. Press `B`, step out of frame for 3 seconds, and come back. Or pass `--background` with a photo of your empty room taken from the same webcam.
+Press `B`, step fully out of frame for 1 second (until the banner turns green), and come back. Don't move the webcam afterwards. Or pass `--background` with a photo of your empty room taken from the same webcam.
 </details>
 
 <details>
@@ -197,7 +203,7 @@ Start Goku Transmission **before** opening the meeting app, or restart the app o
 <details>
 <summary><b>Laggy on an older laptop</b></summary>
 
-Use `--width 960 --height 540`. The models run on CPU, so 720p at 30 fps is comfortable on most laptops from the last 5 years.
+Run with `--debug` and check the fps. If it's under 20, use `--width 960 --height 540`. Close other apps using the GPU/CPU (browser tabs with video).
 </details>
 
 ---
@@ -212,8 +218,8 @@ goku_transmission/
 ├── background.py   # live empty-room plate with inpainting
 ├── effects.py      # Instant Transmission animation
 ├── engine.py       # state machine tying it all together
-└── sound.py        # synthesized teleport sound
-tests/              # 20 tests, no webcam needed
+└── sound.py        # synthesized teleport sound (or your own sounds/teleport.wav)
+tests/              # 25 tests, no webcam needed
 scripts/            # one-click launchers (Windows .bat, macOS/Linux .sh)
 ```
 

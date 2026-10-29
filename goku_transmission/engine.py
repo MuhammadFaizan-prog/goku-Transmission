@@ -13,7 +13,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from .background import BackgroundModel
-from .effects import teleport_frame
+from .effects import TeleportFX
 from .gesture import GestureTrigger, PoseConfig, check_pose
 
 
@@ -25,26 +25,31 @@ class State(str, Enum):
 
 
 class GokuEngine:
-    def __init__(self, vision, *, hold_s: float = 0.5, anim_s: float = 0.9, face_memory_s: float = 2.0,
+    def __init__(self, vision, *, hold_s: float = 0.5, anim_s: float = 0.7, face_memory_s: float = 2.0,
                  pose_cfg: PoseConfig = PoseConfig(), on_event: Optional[Callable[[str], None]] = None,
-                 debug: bool = False):
+                 debug: bool = False, require_clean_room: bool = True):
         self.vision = vision
         self.bg = BackgroundModel()
         self.trigger = GestureTrigger(hold_s=hold_s)
         self.anim_s = anim_s
+        self.fx = TeleportFX()
         self.face_memory_s = face_memory_s
         self.pose_cfg = pose_cfg
         self.on_event = on_event or (lambda e: None)
         self.debug = debug
+        self.require_clean_room = require_clean_room
         self.state = State.PRESENT
         self._anim_start = 0.0
         self._face = None
         self._face_t = -1e9
-        self._frozen_mask: Optional[np.ndarray] = None
         self.last_pose = False
         self.last_reasons: dict = {}
 
     # -- controls -------------------------------------------------------
+    @property
+    def room_ready(self) -> bool:
+        return self.bg.clean or not self.require_clean_room
+
     def toggle(self, now: Optional[float] = None) -> None:
         now = time.monotonic() if now is None else now
         if self.state == State.PRESENT:
@@ -57,7 +62,7 @@ class GokuEngine:
 
     def _start(self, state: State, now: float) -> None:
         self.state, self._anim_start = state, now
-        self._frozen_mask = None
+        self.fx.reset()
         self.on_event(state.value)
 
     # -- per frame ------------------------------------------------------
@@ -67,8 +72,9 @@ class GokuEngine:
 
         # Learn the room only from pixels where you're not, and only while you're
         # visible as yourself (not mid-animation, when the mask is about to lie).
+        # Pause while hands are up: the mask lags fast hands and would paint a ghost arm into the room.
         if self.state in (State.PRESENT, State.GONE):
-            self.bg.update(frame, obs.person_mask)
+            self.bg.update(frame, obs.person_mask, now, frozen=bool(obs.hands))
 
         if obs.face is not None:
             self._face, self._face_t = obs.face, now
@@ -84,7 +90,11 @@ class GokuEngine:
         self.last_pose = pose
 
         if self.state in (State.PRESENT, State.GONE) and self.trigger.update(pose, now):
-            self._start(State.VANISHING if self.state == State.PRESENT else State.APPEARING, now)
+            if self.state == State.PRESENT and self.require_clean_room and not self.bg.clean:
+                # Without a real snapshot of the empty room the "gone" frame would be a smeared guess.
+                self.on_event("need_room")
+            else:
+                self._start(State.VANISHING if self.state == State.PRESENT else State.APPEARING, now)
         elif self.state in (State.VANISHING, State.APPEARING):
             self.trigger.update(pose, now)   # keep tracking so the hand has to come down first
 
@@ -93,7 +103,7 @@ class GokuEngine:
     def _compose(self, frame: np.ndarray, mask: np.ndarray, now: float) -> np.ndarray:
         if not self.bg.ready:
             return frame
-        plate = self.bg.render()
+        plate = self.bg.render(now)
         if self.state == State.PRESENT:
             return frame
         if self.state == State.GONE:
@@ -106,4 +116,4 @@ class GokuEngine:
             self.on_event(done.value)
             return plate.copy() if done == State.GONE else frame
         progress = t if self.state == State.VANISHING else 1.0 - t
-        return teleport_frame(frame, plate, mask, progress)
+        return self.fx.render(frame, plate, mask, progress)
