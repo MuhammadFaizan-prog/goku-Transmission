@@ -104,7 +104,7 @@ python -m goku_transmission
 First run downloads three small MediaPipe models (~8 MB) into `models/`.
 
 ### 3. Teleport
-1. A preview window opens with a red banner. **Step out of frame for 1 second**; it turns green: *Room captured*.
+1. A preview window opens with a red banner. **Leave the frame completely** (no shoulder or arm at the edge) and stay still for 1 second; it turns green: *Room captured*. A small *room* thumbnail in the corner shows exactly what the meeting will see when you vanish. If any part of you is in it, press `B` and do it again.
 2. Sit back down. Two fingers together on your forehead and hold ½ second (a cyan bar fills at the bottom of the preview). ⚡
 3. Lower your hand. Do it again to come back.
 

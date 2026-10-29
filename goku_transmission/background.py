@@ -32,6 +32,7 @@ class BackgroundModel:
         self.seen: np.ndarray | None = None       # uint8 HxW, 255 = observed as room
         self.clean = False                        # True once a person-free snapshot was taken
         self._empty_since: float | None = None
+        self._prev_small: np.ndarray | None = None
         self._filled: np.ndarray | None = None
         self._filled_t = -1e9
         self._dirty = True
@@ -72,7 +73,12 @@ class BackgroundModel:
                someone_seen: bool = False) -> None:
         # 1) clean snapshot when nobody is in frame for a moment. The segmenter alone can miss a
         #    person on a washed-out webcam, so a visible face or hand also means "not empty".
-        if not someone_seen and float((person_mask > 0.5).mean()) < self.empty_fraction:
+        # ...and the picture has to be still: someone walking out (or a shoulder at the edge
+        # moving) keeps resetting the timer, so we never snap half of you into the room.
+        small = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (64, 36), interpolation=cv2.INTER_AREA)
+        moving = self._prev_small is not None and float(cv2.absdiff(small, self._prev_small).mean()) > 3.0
+        self._prev_small = small
+        if not someone_seen and not moving and float((person_mask > 0.5).mean()) < self.empty_fraction:
             if self._empty_since is None:
                 self._empty_since = now
             if now - self._empty_since >= self.empty_hold_s:

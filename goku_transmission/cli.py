@@ -64,6 +64,18 @@ def _banner(img, text, color):
     cv2.putText(img, text, (14, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
 
+def _room_thumb(img, plate):
+    """Preview-only: what the meeting will see when you vanish. If you're in it, press B."""
+    h, w = img.shape[:2]
+    tw = w // 5
+    th = int(plate.shape[0] * tw / plate.shape[1])
+    thumb = cv2.resize(cv2.flip(plate, 1), (tw, th), interpolation=cv2.INTER_AREA)
+    y, x = h - th - 18, w - tw - 8
+    img[y:y + th, x:x + tw] = thumb
+    cv2.rectangle(img, (x - 1, y - 1), (x + tw, y + th), (255, 255, 255), 1)
+    cv2.putText(img, "room (B to redo)", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+
+
 def _hold_bar(img, p):
     h, w = img.shape[:2]
     cv2.rectangle(img, (0, h - 10), (int(w * p), h), (255, 230, 120), -1)
@@ -185,11 +197,13 @@ def run_live(args) -> int:
             if not args.no_preview:
                 view = cv2.flip(out, 1)   # mirrored like a normal selfie view (the meeting gets the unmirrored one)
                 if not eng.bg.clean:
-                    _banner(view, "Step out of frame for 1 sec to capture your room", (40, 40, 220))
+                    _banner(view, "Leave the frame COMPLETELY for 1 sec to capture your room", (40, 40, 220))
                 elif now - captured_at < 2.5:
                     _banner(view, "Room captured - two fingers on your forehead to teleport", (60, 160, 60))
                 elif eng.trigger.progress(now) > 0 and eng.state in (State.PRESENT, State.GONE):
                     _hold_bar(view, eng.trigger.progress(now))
+                if eng.bg.clean:
+                    _room_thumb(view, eng.bg.render(now))
                 cv2.imshow(WINDOW, view)
                 k = cv2.waitKey(1) & 0xFF
                 if k in (ord("q"), 27):
