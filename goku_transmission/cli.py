@@ -75,7 +75,7 @@ def _room_thumb(img, plate):
     y, x = h - th - 18, w - tw - 8
     img[y:y + th, x:x + tw] = thumb
     cv2.rectangle(img, (x - 1, y - 1), (x + tw, y + th), (255, 255, 255), 1)
-    cv2.putText(img, "room (B to redo)", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(img, "captured room (R to hide)", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 def _hold_bar(img, p):
@@ -166,10 +166,11 @@ def run_live(args) -> int:
     print("\n  1. Step out of frame for 1 second so the empty room is captured.\n"
           "  2. Sit down. Index + middle finger together on your forehead, hold ~%.1fs.\n"
           "  3. Lower your hand, do it again to come back.\n"
-          "  Keys (click the preview window first): T teleport  B 3s room capture  D debug  Q quit\n" % args.hold)
+          "  Keys (click the preview window first): T teleport  B 3s room capture  R peek at room  D debug  Q quit\n" % args.hold)
     if not args.no_preview:
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
     last_dbg, room_ok, captured_at, n_caps = 0.0, None, -1e9, 0
+    show_room = False   # R toggles a small peek at the captured room
     n_frames, t_fps = 0, time.monotonic()
     try:
         while True:
@@ -208,7 +209,7 @@ def run_live(args) -> int:
                     _banner(view, "Room captured - two fingers on your forehead to teleport", (60, 160, 60))
                 elif eng.trigger.progress(now) > 0 and eng.state in (State.PRESENT, State.GONE):
                     _hold_bar(view, eng.trigger.progress(now))
-                if eng.bg.clean:
+                if show_room and eng.bg.clean:
                     _room_thumb(view, eng.bg.render(now))
                 cv2.imshow(WINDOW, view)
                 k = cv2.waitKey(1) & 0xFF
@@ -219,6 +220,8 @@ def run_live(args) -> int:
                 if k == ord("b"):
                     eng.start_room_capture(now)
                     print("[room] capturing the room in 3 seconds - get out of the frame!")
+                if k == ord("r"):
+                    show_room = not show_room
                 if k == ord("d"):
                     args.debug = not args.debug
     except KeyboardInterrupt:

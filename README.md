@@ -1,41 +1,250 @@
 <div align="center">
 
-<img src="docs/banner.jpg" alt="Goku Transmission: teleport out of your video call" width="100%"/>
+<img src="docs/banner.jpg" alt="Goku Transmission" width="100%"/>
 
 # ⚡ Goku Transmission
 
-**Put two fingers on your forehead. Vanish from the meeting.**
+### Put two fingers on your forehead. Vanish from the meeting. 🫡💨
 
-A virtual webcam that watches for Goku's *Instant Transmission* pose and teleports you out of Zoom, Google Meet, Teams or Discord, leaving an empty room behind. Same pose again and you're back.
+Your webcam watches for Goku's **Instant Transmission** pose and teleports you out of
+**Zoom, Google Meet, Teams or Discord**, leaving your empty room behind.
+Do it again and you're back.
+
+<img src="docs/demo.gif" alt="Demo: pose, teleport, empty room, come back" width="720"/>
+
+<sub>Real output of this repo, run on a sample image. Sound plays on your speakers.</sub>
+
+<br/>
+
+[![Star this repo](https://img.shields.io/github/stars/MuhammadFaizan-prog/goku-Transmission?style=for-the-badge&logo=github&label=Star%20it&color=FFB000)](https://github.com/MuhammadFaizan-prog/goku-Transmission/stargazers)
+[![Follow](https://img.shields.io/github/followers/MuhammadFaizan-prog?style=for-the-badge&logo=github&label=Follow%20me&color=24292F)](https://github.com/MuhammadFaizan-prog)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/muhammad-faizan-60518a290)
 
 [![tests](https://github.com/MuhammadFaizan-prog/goku-Transmission/actions/workflows/tests.yml/badge.svg)](https://github.com/MuhammadFaizan-prog/goku-Transmission/actions/workflows/tests.yml)
-![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)
-![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks-0097A7?logo=google&logoColor=white)
-![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?logo=opencv&logoColor=white)
-![Platforms](https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Python](https://img.shields.io/badge/python-3.10%20to%203.12-3776AB?logo=python&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-macOS-Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-[How it works](#-how-it-works) · [Quick start](#-quick-start) · [Use it in a meeting](#-use-it-in-zoom--meet--teams) · [Testing](#-testing) · [Troubleshooting](#-troubleshooting)
+**[🚀 Set it up in 5 minutes](#-set-it-up-in-5-minutes-windows)** · [🫡 How to teleport](#-how-to-teleport) · [😵 Help, it\'s not working](#-help-its-not-working) · [🤓 How it works](#-how-it-works-for-nerds)
 
 </div>
 
 ---
 
-## ✨ What it does
+## 👋 Came here from Instagram?
 
-| | |
-|---|---|
-| 🫡 **The pose** | Index and middle finger straight and **together**, ring and pinky curled, fingertips on your **forehead**. Hold for half a second. |
-| ⚡ **The teleport** | Timed frame by frame against the original reel: thin lines rain over the frame, you cut out, a glowing outline of you hangs in the air and fades. About 0.3s, all drawn in code, with your sound on every vanish and return. |
-| 🏠 **The empty room** | Step out of frame for 1 second and your real empty room is captured. While you're gone, that's what the meeting sees. |
-| 🔁 **Coming back** | Lower your hand, do the pose again, and the animation plays in reverse. |
-| 🔒 **Private** | Everything runs on your machine. No uploads, no accounts, no recording. |
+Welcome! Yes, this is the teleport thing, and yes, it actually works. Here's the whole idea:
 
-> Inspired by a viral reel of a developer teleporting out of his meetings. Built from scratch here: original code, MIT licensed.
+| 1️⃣ | 2️⃣ | 3️⃣ |
+|:---:|:---:|:---:|
+| **Leave the frame for a second**<br/>so it snaps a photo of your empty room | **Two fingers on your forehead**<br/>hold for half a second | **⚡ Gone.**<br/>Your call now sees an empty room. Do it again to come back. |
+
+No coding needed. Follow the steps below, copy, paste, done.
+
+> ⭐ **If it makes you laugh, star the repo.** It's free, takes one click, and tells me to build more stuff like this.
 
 ---
 
-## 🧠 How it works
+## 🚀 Set it up in 5 minutes (Windows)
+
+You install three things once. After that it's one double-click.
+
+### Step 1: Install Python
+1. Go to **[python.org/downloads](https://www.python.org/downloads/release/python-3119/)** and download **Python 3.11** ("Windows installer 64-bit").
+2. Run it. ⚠️ **Tick the box "Add python.exe to PATH"** at the bottom of the first screen, then click *Install Now*.
+
+> Already have Python? Open *Command Prompt* and type `python --version`. **3.10, 3.11 or 3.12** is perfect.
+
+### Step 2: Install OBS (this gives you the fake camera)
+1. Download **[OBS Studio](https://obsproject.com/)** and install it with the default options.
+2. That's it. You don't need to open OBS or learn it. It just installs the **OBS Virtual Camera** that Zoom and Meet can see.
+
+### Step 3: Download this project
+**Easiest:** click the green **`<> Code`** button at the top of this page → **Download ZIP** → right-click the ZIP → **Extract All**.
+
+<details>
+<summary>Prefer Git? (click)</summary>
+
+```bash
+git clone https://github.com/MuhammadFaizan-prog/goku-Transmission.git
+cd goku-Transmission
+```
+To update later: `git pull`
+</details>
+
+### Step 4: Double-click to run
+Open the folder, go into **`scripts`**, and double-click **`run_windows.bat`**.
+
+- The **first time** it installs everything by itself. That takes 2 to 5 minutes, so let it finish.
+- Next time it starts in seconds.
+- A window called **"Goku Transmission - preview"** pops up showing your camera. 🎉
+
+> 🛡️ Windows says *"Windows protected your PC"*? Click **More info → Run anyway**. It's just the .bat file from this repo.
+
+### Step 5: Pick the camera in your meeting app
+| App | Where |
+|---|---|
+| **Zoom** | Settings → Video → Camera → **OBS Virtual Camera** |
+| **Google Meet** | ⋮ (three dots) → Settings → Video → **OBS Virtual Camera** |
+| **Teams** | ••• → Settings → Devices → Camera → **OBS Virtual Camera** |
+| **Discord** | User Settings → Voice & Video → Camera → **OBS Virtual Camera** |
+
+> Keep the Goku window open while you're in the call. Close it and the camera stops.
+
+<details>
+<summary>🍎 macOS / 🐧 Linux (click)</summary>
+
+**macOS:** install [OBS](https://obsproject.com/), open it once, click **Start Virtual Camera**, then **Stop** (this registers the camera). Then in Terminal:
+
+```bash
+git clone https://github.com/MuhammadFaizan-prog/goku-Transmission.git && cd goku-Transmission
+./scripts/run.sh
+```
+
+**Linux:**
+```bash
+sudo apt install v4l2loopback-dkms
+sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="Goku Cam"
+git clone https://github.com/MuhammadFaizan-prog/goku-Transmission.git && cd goku-Transmission
+./scripts/run.sh
+```
+</details>
+
+---
+
+## 🫡 How to teleport
+
+### 1. Let it photograph your empty room (once)
+When the preview opens, you'll see a **red bar** at the top.
+
+**Option A:** just **walk out of the camera completely** for a second. No shoulder, no arm at the edge.
+**Option B (most reliable):** click the preview window, press **`B`**, and leave. It counts down **3 seconds** and takes the photo.
+
+The bar turns **green: "Room captured"**.
+👀 Want to check it? Press **`R`** to peek at the captured room in the corner (press `R` again to hide it). If any part of you is in it, press **`B`** and try again.
+
+### 2. Teleport
+Sit down and do the pose:
+
+> ☝️✌️ **index + middle finger straight and touching**, other fingers curled, **fingertips on your forehead**. Hold for **half a second**.
+
+A blue bar fills at the bottom of the preview, then **⚡ shyun!** you're gone.
+
+### 3. Come back
+Lower your hand, then do the pose again. You reappear with the same effect in reverse.
+
+### ⌨️ Keys
+Click the preview window first, then:
+
+| Key | What it does |
+|:---:|---|
+| **`T`** | Teleport without the pose (for when your hand is busy holding chai ☕) |
+| **`B`** | 3-second countdown, then re-photograph your empty room |
+| **`R`** | Peek at the captured empty room (press again to hide) |
+| **`D`** | Show debug info and FPS in the black window |
+| **`Q`** | Quit |
+
+### 🔊 The sound
+The Instant Transmission sound plays **every time you vanish and every time you come back**, on **your** speakers only. People in the call don't hear it.
+Want a different sound? Put a file named **`teleport.mp3`** (or `.wav`) inside the **`sounds`** folder.
+
+<details>
+<summary>⚙️ Extra options for power users (click)</summary>
+
+Run these from a terminal inside the project folder (after the first run, `.venv\Scripts\activate` on Windows):
+
+```bash
+python -m goku_transmission --camera 1           # use your second webcam
+python -m goku_transmission --hold 0.3           # trigger faster
+python -m goku_transmission --anim 0.6           # slower teleport (default 0.3s, like the reel)
+python -m goku_transmission --sound shyun.mp3    # your own sound
+python -m goku_transmission --mute               # no sound
+python -m goku_transmission --width 960 --height 540   # faster on old laptops
+python -m goku_transmission --background room.jpg      # use a photo as the empty room
+python -m goku_transmission --no-virtual         # preview only, no fake camera
+python -m goku_transmission --debug              # print what the gesture detector sees
+python -m goku_transmission --self-test          # check the install without a webcam
+python -m goku_transmission --input in.mp4 --output out.mp4   # run on a video file
+```
+
+On Windows you can also pass options to the launcher: `scripts\run_windows.bat --debug`
+</details>
+
+---
+
+## 😵 Help, it's not working
+
+<details>
+<summary><b>"python is not recognized"</b></summary>
+
+Python isn't on PATH. Reinstall Python and **tick "Add python.exe to PATH"**. Then close and reopen the window.
+</details>
+
+<details>
+<summary><b>The install fails / "No matching distribution found for mediapipe"</b></summary>
+
+Your Python is too new or too old. Install **Python 3.11** (link in Step 1), delete the **`.venv`** folder inside the project, and double-click `run_windows.bat` again.
+</details>
+
+<details>
+<summary><b>Zoom / Meet doesn't show "OBS Virtual Camera"</b></summary>
+
+Install OBS (Step 2), then **fully quit and reopen** Zoom/Meet/Chrome. In OBS, make sure **Start Virtual Camera is OFF**, because only one app can use it at a time.
+</details>
+
+<details>
+<summary><b>When I vanish, part of me is still there (shoulder, arm, a ghost)</b></summary>
+
+The room photo caught you. Click the preview, press **`B`**, and be **completely** out of the frame before the countdown hits 0. Press **`R`** to check the captured room. Don't move the laptop afterwards.
+</details>
+
+<details>
+<summary><b>The pose doesn't trigger</b></summary>
+
+- Keep your **face visible** and well lit.
+- Press the **two fingertips together**: a peace sign ✌️ won't work on purpose.
+- Ring and pinky **curled**.
+- Run with `--debug`. Each word (`two_straight`, `others_curled`, `together`, `on_forehead`) should turn `True` while you hold it.
+</details>
+
+<details>
+<summary><b>"Pose seen, but I haven't seen your empty room yet"</b></summary>
+
+You skipped the room photo. Press **`B`** and leave the frame for 3 seconds.
+</details>
+
+<details>
+<summary><b>The keys don't do anything</b></summary>
+
+Click on the **preview window** first. Keys typed into the black terminal window are ignored.
+</details>
+
+<details>
+<summary><b>It's laggy</b></summary>
+
+Press **`D`** and check the FPS in the terminal. Under 20? Run `scripts\run_windows.bat --width 960 --height 540` and close browser tabs playing video.
+</details>
+
+<details>
+<summary><b>No sound</b></summary>
+
+Check your volume and that you didn't pass `--mute`. The sound is in `sounds\goku_teleport.wav`. If you put your own `teleport.mp3` there, make sure it plays in a normal media player.
+</details>
+
+<details>
+<summary><b>Lots of <code>W0000 ...</code> warnings in the black window</b></summary>
+
+Harmless. Those come from Google's MediaPipe library. Ignore them.
+</details>
+
+Still stuck? **[Open an issue](https://github.com/MuhammadFaizan-prog/goku-Transmission/issues/new)** with a screenshot of the black window.
+
+---
+
+## 🤓 How it works (for nerds)
+
+<details>
+<summary>Architecture, pose math, room model, effect timing (click)</summary>
 
 ```mermaid
 flowchart LR
@@ -74,82 +283,10 @@ Matched frame by frame to the reference reel at 30 fps. **Vanish:** 2 frames of 
 **5. Into the meeting**: `pyvirtualcam`
 Frames go to a virtual webcam driver (OBS Virtual Camera on Windows/macOS, v4l2loopback on Linux). Meeting apps see it as a normal camera.
 
----
+</details>
 
-## 🚀 Quick start
-
-### 1. Install the virtual camera driver
-| OS | What to install |
-|---|---|
-| **Windows** | [OBS Studio](https://obsproject.com/) 28+ (includes *OBS Virtual Camera*) |
-| **macOS** | [OBS Studio](https://obsproject.com/) 28+, then click **Start Virtual Camera** once in OBS to register it, then **Stop** |
-| **Linux** | `sudo apt install v4l2loopback-dkms && sudo modprobe v4l2loopback devices=1 exclusive_caps=1 card_label="Goku Cam"` |
-
-You don't need to keep OBS open. Just make sure OBS's own *Start Virtual Camera* is **off** while this runs, because only one app can drive it.
-
-### 2. Run it
-
-**Windows (one click):** double-click `scripts\run_windows.bat`. It creates a virtual environment, installs everything and starts the cam.
-
-**Any OS (manual):**
-```bash
-git clone https://github.com/MuhammadFaizan-prog/goku-Transmission.git
-cd goku-Transmission
-python -m venv .venv
-# Windows: .venv\Scripts\activate     macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-python -m goku_transmission
-```
-
-First run downloads three small MediaPipe models (~8 MB) into `models/`.
-
-### 3. Teleport
-1. A preview window opens with a red banner. **Leave the frame completely** (no shoulder or arm at the edge) and stay still for 1 second; it turns green: *Room captured*. A small *room* thumbnail in the corner shows exactly what the meeting will see when you vanish. If any part of you is in it, click the preview window, press `B`, and get out of frame: it counts down 3 seconds and captures the room no matter what.
-2. Sit back down. Two fingers together on your forehead and hold ½ second (a cyan bar fills at the bottom of the preview). ⚡
-3. Lower your hand. Do it again to come back.
-
-> The terminal prints a few `W0000 ... landmark_projection` / `inference_runner` warnings at start. They come from MediaPipe and are harmless.
-
----
-
-## 🎥 Use it in Zoom / Meet / Teams
-
-| App | Where |
-|---|---|
-| **Zoom** | Settings → Video → Camera → **OBS Virtual Camera** |
-| **Google Meet** | ⋮ → Settings → Video → Camera → **OBS Virtual Camera** (restart the browser if it's missing) |
-| **Microsoft Teams** | Settings → Devices → Camera → **OBS Virtual Camera** |
-| **Discord** | User Settings → Voice & Video → Camera → **OBS Virtual Camera** |
-
-> 🎙️ Your **microphone isn't touched**. Mute yourself when you vanish, or the empty room will keep talking.
-
----
-
-## ⌨️ Controls & options
-
-**Preview window keys:** `T` teleport manually · `B` 3-second countdown, then recapture the room (works even while you're gone) · `D` toggle debug output (shows fps too) · `Q` / `Esc` quit
-
-```bash
-python -m goku_transmission --camera 1                # pick another webcam
-python -m goku_transmission --width 1920 --height 1080 --fps 30
-python -m goku_transmission --hold 0.8                # require a longer hold
-python -m goku_transmission --anim 0.6                # slower teleport (default 0.3s, like the reel)
-python -m goku_transmission --sound shyun.mp3         # your own teleport sound (.mp3 / .wav)
-python -m goku_transmission --allow-guess             # teleport before the room was captured
-python -m goku_transmission --background room.jpg     # use a photo of your empty room
-python -m goku_transmission --virtual-backend unitycapture   # Windows alternative to OBS
-python -m goku_transmission --no-virtual              # preview only, no driver needed
-python -m goku_transmission --mute                    # no teleport sound
-python -m goku_transmission --debug                   # print why a pose is / isn't detected
-python -m goku_transmission --input me.mp4 --output out.mp4  # process a recorded clip
-python -m goku_transmission --self-test               # check the install without a webcam
-```
-
-**Sound:** the Instant Transmission sound plays every time you vanish and every time you reappear. Want a different one? Put `teleport.mp3` or `teleport.wav` in the `sounds/` folder (gitignored) or pass `--sound file.mp3`. MP3 works out of the box on Windows and macOS. It plays on **your** speakers only and never goes into the call.
-
----
-
-## 🧪 Testing
+<details>
+<summary>🧪 Tests (click)</summary>
 
 ```bash
 pip install -r requirements-dev.txt
@@ -172,67 +309,40 @@ python -m pytest -q
    ```
 4. Open Zoom → Settings → Video, choose **OBS Virtual Camera** and teleport in the preview.
 
----
-
-## 🛠️ Troubleshooting
-
-<details>
-<summary><b>"no virtual camera" in the terminal</b></summary>
-
-Install OBS Studio 28+. On macOS, start and stop OBS's virtual camera once so the system registers it. Make sure OBS's own *Start Virtual Camera* is off. On Linux, load `v4l2loopback` (see Quick start). The app keeps running in preview-only mode until a driver is there.
 </details>
 
 <details>
-<summary><b>The pose isn't detected</b></summary>
-
-Run with `--debug`. Usually: fingers too spread (`together: False`; keep index and middle touching), hand too low (`on_forehead: False`), or a dark room. Face the camera with your hand fully in frame.
-</details>
-
-<details>
-<summary><b>A ghost or blur where I was sitting</b></summary>
-
-Click the preview window, press `B`, and leave the frame before the 3-second countdown ends. Check the *room* thumbnail. Don't move the webcam afterwards. Or pass `--background` with a photo of your empty room taken from the same webcam.
-</details>
-
-<details>
-<summary><b>The meeting app doesn't list OBS Virtual Camera</b></summary>
-
-Start Goku Transmission **before** opening the meeting app, or restart the app or browser after starting it.
-</details>
-
-<details>
-<summary><b>Laggy on an older laptop</b></summary>
-
-Run with `--debug` and check the fps. If it's under 20, use `--width 960 --height 540`. Close other apps using the GPU/CPU (browser tabs with video).
-</details>
-
----
-
-## 📁 Project structure
+<summary>📁 Project structure (click)</summary>
 
 ```
 goku_transmission/
 ├── cli.py          # entry point: live webcam, file mode, self-test
 ├── vision.py       # MediaPipe hand landmarker + face detector + selfie segmenter
 ├── gesture.py      # pose rules + hold/re-arm trigger (pure Python, unit-tested)
-├── background.py   # live empty-room plate with inpainting
-├── effects.py      # Instant Transmission animation
+├── background.py   # empty-room capture (step out or B countdown)
+├── effects.py      # Instant Transmission animation, timed to the reel
 ├── engine.py       # state machine tying it all together
-└── sound.py        # synthesized teleport sound (or your own sounds/teleport.wav)
-tests/              # 25 tests, no webcam needed
+└── sound.py        # plays sounds/goku_teleport.wav (or your teleport.mp3)
+tests/              # 30 tests, no webcam needed
 scripts/            # one-click launchers (Windows .bat, macOS/Linux .sh)
+docs/               # banner + demo GIF
 ```
+</details>
+
+---
 
 ## ⚖️ Responsible use
+It's a joke tool for friendly calls. Don't use it to fake being present where attendance actually matters. 🙃
 
-It's a joke tool for friendly calls. Don't use it to fake being present where attendance actually matters.
-
-## 📜 License
-
-[MIT](LICENSE) © 2026 Muhammad Faizan. MediaPipe models are © Google, Apache 2.0.
+## 📜 License & credits
+Code: [MIT](LICENSE) © 2026 Muhammad Faizan.
+MediaPipe models © Google (Apache 2.0). The Instant Transmission sound and Dragon Ball © their owners (Akira Toriyama / Toei Animation). This is a non-commercial fan project.
+Inspired by a viral reel of a developer teleporting out of his meetings. All code here was written from scratch.
 
 <div align="center">
 
-**If it made you laugh, drop a ⭐**
+### Made with ⚡ by [Muhammad Faizan](https://github.com/MuhammadFaizan-prog)
+
+If this made you laugh, **[⭐ star the repo](https://github.com/MuhammadFaizan-prog/goku-Transmission)** and **[follow me](https://github.com/MuhammadFaizan-prog)** for more.
 
 </div>
