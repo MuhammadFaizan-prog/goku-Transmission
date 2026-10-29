@@ -22,10 +22,10 @@ Do it again and you're back.
 
 [![tests](https://github.com/MuhammadFaizan-prog/goku-Transmission/actions/workflows/tests.yml/badge.svg)](https://github.com/MuhammadFaizan-prog/goku-Transmission/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/python-3.10%20to%203.12-3776AB?logo=python&logoColor=white)
-![Windows](https://img.shields.io/badge/Windows-macOS-Linux-lightgrey)
+![Windows](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**[🚀 Set it up in 5 minutes](#-set-it-up-in-5-minutes-windows)** · [🫡 How to teleport](#-how-to-teleport) · [😵 Help, it\'s not working](#-help-its-not-working) · [🤓 How it works](#-how-it-works-for-nerds)
+**[🚀 Set it up in 5 minutes](#-set-it-up-in-5-minutes-windows)** · [🫡 How to teleport](#-how-to-teleport) · [😵 Help, it's not working](#-help-its-not-working) · [🤓 How it works](#-how-it-works-for-nerds)
 
 </div>
 
