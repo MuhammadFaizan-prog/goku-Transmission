@@ -12,3 +12,12 @@ dist/
 sounds/*.wav
 sounds/*.mp3
 !sounds/goku_teleport.wav
+
+# never commit personal screenshots or recordings
+Screenshot*
+screenshot*
+*.webp
+*.heic
+*.mov
+*.mkv
+recordings/
