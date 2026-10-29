@@ -44,6 +44,7 @@ class GokuEngine:
         self._face_t = -1e9
         self.last_pose = False
         self.last_reasons: dict = {}
+        self.capture_at: Optional[float] = None    # countdown room capture (key B)
 
     # -- controls -------------------------------------------------------
     @property
@@ -57,6 +58,18 @@ class GokuEngine:
         elif self.state == State.GONE:
             self._start(State.APPEARING, now)
 
+    def start_room_capture(self, now: Optional[float] = None, delay_s: float = 3.0) -> None:
+        """Countdown capture: you get `delay_s` seconds to leave, then the frame is taken as the
+        room no matter what the detector thinks. Also brings you back if you were 'gone'."""
+        now = time.monotonic() if now is None else now
+        self.state = State.PRESENT
+        self.fx.reset()
+        self.trigger = GestureTrigger(hold_s=self.trigger.hold_s)
+        self.capture_at = now + delay_s
+
+    def capture_countdown(self, now: float) -> Optional[float]:
+        return None if self.capture_at is None else max(0.0, self.capture_at - now)
+
     def set_background(self, image: np.ndarray) -> None:
         self.bg.set_plate(image)
 
@@ -68,6 +81,13 @@ class GokuEngine:
     # -- per frame ------------------------------------------------------
     def process(self, frame: np.ndarray, now: Optional[float] = None) -> np.ndarray:
         now = time.monotonic() if now is None else now
+        if self.capture_at is not None:
+            if now >= self.capture_at:
+                self.capture_at = None
+                self.bg.set_plate(frame)
+                self.on_event("room_captured")
+            self.vision.observe(frame, int(now * 1000))   # keep the video-mode timestamps flowing
+            return frame
         obs = self.vision.observe(frame, int(now * 1000))
 
         # Learn the room only from pixels where you're not, and only while you're
@@ -75,7 +95,7 @@ class GokuEngine:
         # Pause while hands are up: the mask lags fast hands and would paint a ghost arm into the room.
         # While GONE you are still sitting there, so the room plate is frozen: learning then
         # could only paint you back into it. Recapturing happens when you step out (or press B).
-        if self.state == State.PRESENT or (self.state == State.GONE and not self.bg.ready):
+        if self.state == State.PRESENT:
             self.bg.update(frame, obs.person_mask, now, frozen=bool(obs.hands),
                            someone_seen=bool(obs.hands) or obs.face is not None)
 

@@ -104,7 +104,7 @@ python -m goku_transmission
 First run downloads three small MediaPipe models (~8 MB) into `models/`.
 
 ### 3. Teleport
-1. A preview window opens with a red banner. **Leave the frame completely** (no shoulder or arm at the edge) and stay still for 1 second; it turns green: *Room captured*. A small *room* thumbnail in the corner shows exactly what the meeting will see when you vanish. If any part of you is in it, press `B` and do it again.
+1. A preview window opens with a red banner. **Leave the frame completely** (no shoulder or arm at the edge) and stay still for 1 second; it turns green: *Room captured*. A small *room* thumbnail in the corner shows exactly what the meeting will see when you vanish. If any part of you is in it, click the preview window, press `B`, and get out of frame: it counts down 3 seconds and captures the room no matter what.
 2. Sit back down. Two fingers together on your forehead and hold ½ second (a cyan bar fills at the bottom of the preview). ⚡
 3. Lower your hand. Do it again to come back.
 
@@ -127,7 +127,7 @@ First run downloads three small MediaPipe models (~8 MB) into `models/`.
 
 ## ⌨️ Controls & options
 
-**Preview window keys:** `T` teleport manually · `B` recapture the room · `D` toggle debug output (shows fps too) · `Q` / `Esc` quit
+**Preview window keys:** `T` teleport manually · `B` 3-second countdown, then recapture the room (works even while you're gone) · `D` toggle debug output (shows fps too) · `Q` / `Esc` quit
 
 ```bash
 python -m goku_transmission --camera 1                # pick another webcam
@@ -191,7 +191,7 @@ Run with `--debug`. Usually: fingers too spread (`together: False`; keep index a
 <details>
 <summary><b>A ghost or blur where I was sitting</b></summary>
 
-Press `B`, step fully out of frame for 1 second (until the banner turns green), and come back. Don't move the webcam afterwards. Or pass `--background` with a photo of your empty room taken from the same webcam.
+Click the preview window, press `B`, and leave the frame before the 3-second countdown ends. Check the *room* thumbnail. Don't move the webcam afterwards. Or pass `--background` with a photo of your empty room taken from the same webcam.
 </details>
 
 <details>

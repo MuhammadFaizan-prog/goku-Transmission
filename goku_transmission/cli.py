@@ -48,10 +48,12 @@ def parse_args(argv=None) -> argparse.Namespace:
 def _events(mute: bool):
     labels = {"vanishing": "Instant Transmission... gone", "appearing": "...and back",
               "gone": "  (you are invisible)", "present": "  (you are visible)",
-              "need_room": "Pose seen, but I haven't seen your empty room yet. Step out of frame for 1 second, then try again."}
+              "need_room": "Pose seen, but I haven't seen your empty room yet. Press B and leave the frame.",
+              "room_captured": ""}
 
     def handle(e: str):
-        print(f"[goku] {labels.get(e, e)}")
+        if labels.get(e, e):
+            print(f"[goku] {labels.get(e, e)}")
         if e in ("vanishing", "appearing") and not mute:
             sound.play()
     return handle
@@ -164,10 +166,10 @@ def run_live(args) -> int:
     print("\n  1. Step out of frame for 1 second so the empty room is captured.\n"
           "  2. Sit down. Index + middle finger together on your forehead, hold ~%.1fs.\n"
           "  3. Lower your hand, do it again to come back.\n"
-          "  Keys (preview window): T teleport  B recapture room  D debug  Q quit\n" % args.hold)
+          "  Keys (click the preview window first): T teleport  B 3s room capture  D debug  Q quit\n" % args.hold)
     if not args.no_preview:
         cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
-    last_dbg, room_ok, captured_at = 0.0, None, -1e9
+    last_dbg, room_ok, captured_at, n_caps = 0.0, None, -1e9, 0
     n_frames, t_fps = 0, time.monotonic()
     try:
         while True:
@@ -178,12 +180,13 @@ def run_live(args) -> int:
             now = time.monotonic()
             out = eng.process(frame, now)
 
-            if eng.bg.clean != room_ok:
-                room_ok = eng.bg.clean
-                print("[room] empty room captured. Sit down and teleport!" if room_ok else
-                      "[room] step out of frame for 1 second so I can capture the empty room...")
-                if room_ok:
-                    captured_at = now
+            caps = getattr(eng.bg, "captures", 0)
+            if caps != n_caps:
+                n_caps, captured_at = caps, now
+                print("[room] empty room captured. Sit down and teleport!")
+            elif eng.bg.clean != room_ok and not eng.bg.clean:
+                print("[room] leave the frame completely (or press B for a 3 s countdown) so I can capture the empty room...")
+            room_ok = eng.bg.clean
             n_frames += 1
             if args.debug and now - last_dbg > 0.5:
                 fps = n_frames / max(1e-6, now - t_fps)
@@ -196,8 +199,11 @@ def run_live(args) -> int:
                 vcam.send(out)
             if not args.no_preview:
                 view = cv2.flip(out, 1)   # mirrored like a normal selfie view (the meeting gets the unmirrored one)
-                if not eng.bg.clean:
-                    _banner(view, "Leave the frame COMPLETELY for 1 sec to capture your room", (40, 40, 220))
+                cd = eng.capture_countdown(now)
+                if cd is not None:
+                    _banner(view, f"Get out of the frame!  capturing room in {cd:0.1f}s", (0, 140, 255))
+                elif not eng.bg.clean:
+                    _banner(view, "Leave the frame completely, or press B for a 3s countdown", (40, 40, 220))
                 elif now - captured_at < 2.5:
                     _banner(view, "Room captured - two fingers on your forehead to teleport", (60, 160, 60))
                 elif eng.trigger.progress(now) > 0 and eng.state in (State.PRESENT, State.GONE):
@@ -211,8 +217,8 @@ def run_live(args) -> int:
                 if k == ord("t"):
                     eng.toggle(now)
                 if k == ord("b"):
-                    eng.bg.reset()
-                    print("[room] relearning background...")
+                    eng.start_room_capture(now)
+                    print("[room] capturing the room in 3 seconds - get out of the frame!")
                 if k == ord("d"):
                     args.debug = not args.debug
     except KeyboardInterrupt:

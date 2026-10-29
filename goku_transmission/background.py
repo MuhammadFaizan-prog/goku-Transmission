@@ -51,11 +51,14 @@ class BackgroundModel:
         self.plate = image.astype(np.float32)
         self.seen = np.full(image.shape[:2], 255, np.uint8)
         self.clean = True
+        self.captures = getattr(self, "captures", 0) + 1
         self._filled, self._dirty = image.copy(), False
 
     def reset(self) -> None:
+        n = getattr(self, "captures", 0)
         self.__init__(self.drift_rate, self.learn_threshold, self.empty_fraction,
                       self.empty_hold_s, self.inpaint_every_s, self.drift_max_diff)
+        self.captures = n
 
     # -- learning -------------------------------------------------------
     def room_mask(self, person_mask: np.ndarray) -> np.ndarray:
@@ -82,7 +85,12 @@ class BackgroundModel:
             if self._empty_since is None:
                 self._empty_since = now
             if now - self._empty_since >= self.empty_hold_s:
-                self.set_plate(frame)          # trusted: nobody here for a while
+                if not getattr(self, "_snapped", False):
+                    self.set_plate(frame)      # trusted: nobody here for a while
+                    self._snapped = True
+                else:                          # still empty: just keep it fresh
+                    self.plate = frame.astype(np.float32)
+                    self._dirty = True
                 return
             if self.plate is None:
                 self.set_plate(frame)          # usable right away, not yet trusted
@@ -90,6 +98,7 @@ class BackgroundModel:
                 return
         else:
             self._empty_since = None
+            self._snapped = False
 
         if frozen and self.plate is not None:
             return

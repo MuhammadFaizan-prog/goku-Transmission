@@ -214,3 +214,19 @@ def test_sound_plays_on_vanish_and_reappear(monkeypatch):
     for e in ("vanishing", "gone", "appearing", "present", "vanishing", "gone", "appearing", "present"):
         h(e)
     assert len(played) == 4
+
+
+def test_b_countdown_recaptures_room_even_while_gone():
+    """Real bug: pressing B while 'gone' froze the current frame (with you in it) as the room."""
+    v = FakeVision()
+    eng = GokuEngine(v, hold_s=0.5, anim_s=0.3, require_clean_room=False)
+    eng.bg.set_plate(frame_with_person())          # a bad room with you in it
+    eng.state = State.GONE
+    eng.start_room_capture(0.0, delay_s=3.0)
+    assert eng.state == State.PRESENT
+    v.present = True
+    out = eng.process(frame_with_person(), 1.0)    # still in the countdown: you see yourself
+    assert np.array_equal(out, frame_with_person())
+    v.present = False
+    eng.process(ROOM, 3.1)                         # countdown done, you're out
+    assert eng.bg.clean and np.array_equal(eng.bg.render(3.1), ROOM)
