@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "goku-transmission"
+version = "1.0.0"
+description = "Teleport out of video calls with Goku's Instant Transmission pose. Gesture-triggered virtual webcam for Zoom, Meet and Teams."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Muhammad Faizan" }]
+requires-python = ">=3.9"
+dependencies = ["mediapipe>=0.10.14", "opencv-python>=4.8", "numpy>=1.24", "pyvirtualcam>=0.11"]
+keywords = ["webcam", "virtual-camera", "mediapipe", "gesture", "zoom", "obs", "computer-vision"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+goku-transmission = "goku_transmission.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MuhammadFaizan-prog/goku-Transmission"
+
+[tool.setuptools]
+packages = ["goku_transmission"]
