@@ -142,3 +142,68 @@ class Vision:
 
     def __del__(self):
         self.close()
+
+
+class AsyncVision:
+    """Runs a :class:`Vision` on its own thread so the camera feed never waits for the models.
+
+    ``observe()`` hands the newest frame to the worker and immediately returns the most
+    recent finished :class:`Observation` (one frame behind at most). Frames the worker
+    can't keep up with are skipped, never queued, so lag can't build up. Same interface
+    as :class:`Vision`, so the engine doesn't know the difference.
+    """
+
+    def __init__(self, vision: "Vision"):
+        import threading
+        self.vision = vision
+        self._cv = threading.Condition()
+        self._job = None          # (frame, ts) waiting to be processed (newest wins)
+        self._obs: Optional[Observation] = None
+        self._done = 0
+        self._running = True
+        self._t = threading.Thread(target=self._run, name="goku-vision", daemon=True)
+        self._t.start()
+
+    def __getattr__(self, name):   # segment(), video, max_width ... pass straight through
+        return getattr(self.vision, name)
+
+    def _run(self):
+        while True:
+            with self._cv:
+                self._cv.wait_for(lambda: self._job is not None or not self._running)
+                if not self._running:
+                    return
+                frame, ts = self._job
+                self._job = None
+            try:
+                obs = self.vision.observe(frame, ts)
+            except Exception as e:  # noqa: BLE001 - keep the feed alive, report once in a while
+                print(f"[vision] frame skipped: {e}")
+                continue
+            with self._cv:
+                self._obs = obs
+                self._done += 1
+                self._cv.notify_all()
+
+    def observe(self, frame_bgr: np.ndarray, ts_ms: Optional[int] = None) -> Observation:
+        with self._cv:
+            self._job = (frame_bgr.copy(), ts_ms)
+            self._cv.notify_all()
+            if self._obs is None:   # very first frame: wait so the engine starts with real data
+                self._cv.wait_for(lambda: self._obs is not None or not self._running, timeout=5.0)
+            obs = self._obs
+        if obs is None:
+            h, w = frame_bgr.shape[:2]
+            return Observation([], None, np.zeros((h, w), np.float32))
+        mh, mw = obs.person_mask.shape
+        if (mh, mw) != frame_bgr.shape[:2]:   # resolution changed under us
+            m = cv2.resize(obs.person_mask, (frame_bgr.shape[1], frame_bgr.shape[0]))
+            obs = Observation(obs.hands, obs.face, m)
+        return obs
+
+    def close(self) -> None:
+        with self._cv:
+            self._running = False
+            self._cv.notify_all()
+        self._t.join(timeout=2.0)
+        self.vision.close()

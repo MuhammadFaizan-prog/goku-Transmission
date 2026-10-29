@@ -37,6 +37,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--virtual-backend", help="pyvirtualcam backend: obs, unitycapture, v4l2loopback, akvcam")
     p.add_argument("--no-preview", action="store_true", help="no preview window")
     p.add_argument("--mute", action="store_true", help="no teleport sound")
+    p.add_argument("--no-threads", action="store_true",
+                   help="run the hand/face/body models on the main thread (slower; only for troubleshooting)")
     p.add_argument("--debug", action="store_true", help="print gesture diagnostics to the terminal")
     p.add_argument("--input", help="process a video file instead of the webcam")
     p.add_argument("--output", help="where to write the processed video (with --input)")
@@ -128,9 +130,14 @@ class LatestFrame:
         self._t.join(timeout=1.0)
 
 
-def _open_webcam(args):
+def _open_webcam(args, mjpg=True):
     backend = cv2.CAP_DSHOW if sys.platform.startswith("win") else cv2.CAP_ANY
     cap = cv2.VideoCapture(args.camera, backend)
+    # MJPG lets most USB/laptop webcams deliver 720p at 30 fps; the default raw YUY2 mode
+    # often drops to 5-10 fps at 720p, which looks exactly like "the camera lags".
+    if mjpg:
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)   # don't let the driver hoard old frames
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
     cap.set(cv2.CAP_PROP_FPS, args.fps)
@@ -139,10 +146,12 @@ def _open_webcam(args):
     return cap
 
 
-def _build_engine(args, video=True):
-    from .vision import Vision
+def _build_engine(args, video=True, threaded=False):
+    from .vision import AsyncVision, Vision
     sound.set_custom(args.sound)
     vision = Vision(video=video)
+    if threaded:
+        vision = AsyncVision(vision)   # models on their own thread: the feed never waits for them
     eng = GokuEngine(vision, hold_s=args.hold, anim_s=args.anim, on_event=_events(args.mute), debug=args.debug,
                      require_clean_room=not args.allow_guess)
     if args.background:
@@ -156,12 +165,16 @@ def _build_engine(args, video=True):
 def run_live(args) -> int:
     cap = _open_webcam(args)
     ok, frame = cap.read()
+    if not ok:   # a few webcams refuse MJPG: fall back to their default mode
+        cap.release()
+        cap = _open_webcam(args, mjpg=False)
+        ok, frame = cap.read()
     if not ok:
         raise SystemExit("[camera] webcam opened but returned no frames.")
     h, w = frame.shape[:2]
     reader = LatestFrame(cap)
     seq = 0
-    eng = _build_engine(args)
+    eng = _build_engine(args, threaded=not args.no_threads)
     vcam = _open_virtual(args, w, h)
     print("\n  1. Step out of frame for 1 second so the empty room is captured.\n"
           "  2. Sit down. Index + middle finger together on your forehead, hold ~%.1fs.\n"

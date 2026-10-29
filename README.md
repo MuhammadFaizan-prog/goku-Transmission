@@ -163,6 +163,7 @@ python -m goku_transmission --width 960 --height 540   # faster on old laptops
 python -m goku_transmission --background room.jpg      # use a photo as the empty room
 python -m goku_transmission --no-virtual         # preview only, no fake camera
 python -m goku_transmission --debug              # print what the gesture detector sees
+python -m goku_transmission --no-threads         # troubleshooting: run the AI models on the main thread
 python -m goku_transmission --self-test          # check the install without a webcam
 python -m goku_transmission --input in.mp4 --output out.mp4   # run on a video file
 ```
@@ -323,7 +324,7 @@ goku_transmission/
 ├── effects.py      # Instant Transmission animation, timed to the reel
 ├── engine.py       # state machine tying it all together
 └── sound.py        # plays sounds/goku_teleport.wav (or your teleport.mp3)
-tests/              # 30 tests, no webcam needed
+tests/              # 32 tests, no webcam needed
 scripts/            # one-click launchers (Windows .bat, macOS/Linux .sh)
 docs/               # banner + demo GIF
 ```
