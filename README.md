@@ -120,7 +120,8 @@ When the preview opens, you'll see a **red bar** at the top.
 **Option A:** just **walk out of the camera completely** for a second. No shoulder, no arm at the edge.
 **Option B (most reliable):** click the preview window, press **`B`**, and leave. It counts down **3 seconds** and takes the photo.
 
-The bar turns **green: "Room captured"**.
+If it can still see a face, hand or body when the countdown ends, the bar turns **red: "I can still see part of you"** and it waits until you're fully gone. Your old room is kept until then.
+The bar turns **green: "Room captured"**. That room is now **locked**: nothing it sees afterwards (like you walking back in) can get into it.
 👀 Want to check it? Press **`R`** to peek at the captured room in the corner (press `R` again to hide it). If any part of you is in it, press **`B`** and try again.
 
 ### 2. Teleport
@@ -196,7 +197,7 @@ Install OBS (Step 2), then **fully quit and reopen** Zoom/Meet/Chrome. In OBS, m
 <details>
 <summary><b>When I vanish, part of me is still there (shoulder, arm, a ghost)</b></summary>
 
-The room photo caught you. Click the preview, press **`B`**, and be **completely** out of the frame before the countdown hits 0. Press **`R`** to check the captured room. Don't move the laptop afterwards.
+The room photo caught you. Click the preview, press **`B`**, and be **completely** out of the frame before the countdown hits 0. Press **`R`** to check the captured room. Don't move the laptop afterwards. If the lighting changes a lot (lamp on, sunset), press **`B`** again.
 </details>
 
 <details>

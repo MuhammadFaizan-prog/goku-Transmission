@@ -80,13 +80,17 @@ def test_arm_the_mask_missed_never_leaks_into_room():
     assert diff[arm].max() == 0
 
 
-def test_lighting_still_followed_after_clean_snapshot():
+def test_captured_room_is_locked():
+    """Real bug from Faizi's laptop: after a clean B capture, walking back in (only a shoulder at the
+    edge, face out of shot, mask missing it) looked 'empty and still' and overwrote the good room."""
     bg = BackgroundModel()
     bg.set_plate(ROOM)
-    dimmer = np.clip(ROOM.astype(int) - 8, 0, 255).astype(np.uint8)
+    shoulder = ROOM.copy()
+    shoulder[120:, 280:] = (210, 205, 200)          # washed-out shoulder the segmenter missed
     for i in range(300):
-        bg.update(dimmer, np.zeros((H, W), np.float32) + 0.0, i / 30, someone_seen=True)
-    assert np.abs(bg.render(10.0).astype(int) - dimmer.astype(int)).max() <= 1
+        bg.update(shoulder, np.zeros((H, W), np.float32), i / 30)
+    assert np.array_equal(bg.render(10.0), ROOM)
+    assert bg.captures == 1
 
 
 def test_no_snapshot_while_face_is_visible():
@@ -228,5 +232,39 @@ def test_b_countdown_recaptures_room_even_while_gone():
     out = eng.process(frame_with_person(), 1.0)    # still in the countdown: you see yourself
     assert np.array_equal(out, frame_with_person())
     v.present = False
-    eng.process(ROOM, 3.1)                         # countdown done, you're out
-    assert eng.bg.clean and np.array_equal(eng.bg.render(3.1), ROOM)
+    for i in range(3):                             # countdown done, you're out (3 clean frames)
+        eng.process(ROOM, 3.1 + i / 30)
+    assert eng.bg.clean and np.array_equal(eng.bg.render(3.2), ROOM)
+
+
+def test_b_countdown_waits_while_part_of_you_is_visible():
+    """Real bug: countdown ended with a shoulder still in shot and that frame became the room."""
+    v = FakeVision()
+    events = []
+    eng = GokuEngine(v, on_event=events.append)
+    eng.bg.set_plate(ROOM)                         # a good room from earlier
+    good = eng.bg.render(0.0).copy()
+    eng.start_room_capture(0.0, delay_s=3.0)
+    v.present = True                               # face + body still visible at the end
+    for i in range(60):
+        eng.process(frame_with_person(), 3.0 + i / 30)
+    assert eng.capture_blocked and "room_blocked" in events
+    assert np.array_equal(eng.bg.render(5.0), good)        # old room kept
+    assert eng.capture_countdown(5.0) is not None          # still waiting
+    v.present = False
+    other = ROOM.copy(); other[:, :5] = 0
+    for i in range(3):
+        eng.process(other, 6.0 + i / 30)
+    assert not eng.capture_blocked and eng.capture_countdown(6.2) is None
+    assert np.array_equal(eng.bg.render(6.2), other) and "room_captured" in events
+
+
+def test_b_countdown_never_accepts_a_visible_hand():
+    v = FakeVision()
+    eng = GokuEngine(v)
+    eng.bg.set_plate(ROOM)
+    eng.start_room_capture(0.0, delay_s=0.5)
+    v.present, v.pose = False, True                # only a hand reaching into shot
+    for i in range(400):
+        eng.process(frame_with_person(), 0.5 + i / 30)
+    assert eng.capture_blocked and np.array_equal(eng.bg.render(20.0), ROOM)

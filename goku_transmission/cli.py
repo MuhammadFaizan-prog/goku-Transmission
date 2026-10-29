@@ -214,7 +214,9 @@ def run_live(args) -> int:
             if not args.no_preview:
                 view = cv2.flip(out, 1)   # mirrored like a normal selfie view (the meeting gets the unmirrored one)
                 cd = eng.capture_countdown(now)
-                if cd is not None:
+                if cd is not None and eng.capture_blocked:
+                    _banner(view, "I can still see part of you - move COMPLETELY out of frame", (0, 0, 230))
+                elif cd is not None:
                     _banner(view, f"Get out of the frame!  capturing room in {cd:0.1f}s", (0, 140, 255))
                 elif not eng.bg.clean:
                     _banner(view, "Leave the frame completely, or press B for a 3s countdown", (40, 40, 220))

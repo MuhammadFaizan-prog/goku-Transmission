@@ -2,9 +2,11 @@
 
 Two ways it gets the room:
 
-1. **Clean snapshot (best).** Whenever the camera sees nobody for ~0.7s
-   (you stepped out of frame), that frame becomes the plate. From then on it
-   only drifts slowly to follow lighting changes. No ghosts, no holes.
+1. **Clean snapshot (best).** The first time the camera sees nobody for ~0.7s
+   (you stepped out of frame), or when the B countdown ends, that frame becomes
+   the plate and is then LOCKED: nothing seen afterwards is ever written into it,
+   so walking back in (a shoulder at the edge, a washed-out arm) can't sneak into
+   the room. Lighting changed? Press B again.
 2. **Live learning (fallback).** Until a clean snapshot exists, every pixel
    well away from you is copied in, and pixels that have always been behind
    you are inpainted (cheaply, at low resolution, at most once a second).
@@ -19,7 +21,7 @@ import numpy as np
 
 
 class BackgroundModel:
-    def __init__(self, drift_rate: float = 0.02, learn_threshold: float = 0.15,
+    def __init__(self, drift_rate: float = 0.0, learn_threshold: float = 0.15,
                  empty_fraction: float = 0.004, empty_hold_s: float = 0.7,
                  inpaint_every_s: float = 1.0, drift_max_diff: int = 18):
         self.drift_rate = drift_rate
@@ -81,16 +83,13 @@ class BackgroundModel:
         small = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (64, 36), interpolation=cv2.INTER_AREA)
         moving = self._prev_small is not None and float(cv2.absdiff(small, self._prev_small).mean()) > 3.0
         self._prev_small = small
-        if not someone_seen and not moving and float((person_mask > 0.5).mean()) < self.empty_fraction:
+        if self.clean and self.drift_rate <= 0:
+            return                             # locked: the captured room is never overwritten
+        if not self.clean and not someone_seen and not moving and float((person_mask > 0.5).mean()) < self.empty_fraction:
             if self._empty_since is None:
                 self._empty_since = now
             if now - self._empty_since >= self.empty_hold_s:
-                if not getattr(self, "_snapped", False):
-                    self.set_plate(frame)      # trusted: nobody here for a while
-                    self._snapped = True
-                else:                          # still empty: just keep it fresh
-                    self.plate = frame.astype(np.float32)
-                    self._dirty = True
+                self.set_plate(frame)          # trusted: nobody here for a while
                 return
             if self.plate is None:
                 self.set_plate(frame)          # usable right away, not yet trusted
@@ -98,7 +97,6 @@ class BackgroundModel:
                 return
         else:
             self._empty_since = None
-            self._snapped = False
 
         if frozen and self.plate is not None:
             return

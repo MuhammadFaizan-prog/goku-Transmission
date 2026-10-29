@@ -45,6 +45,10 @@ class GokuEngine:
         self.last_pose = False
         self.last_reasons: dict = {}
         self.capture_at: Optional[float] = None    # countdown room capture (key B)
+        self.capture_blocked = False               # countdown over, but you're still in the picture
+        self._clean_frames = 0
+        self._blocked_since: Optional[float] = None
+        self._told = False
 
     # -- controls -------------------------------------------------------
     @property
@@ -59,13 +63,18 @@ class GokuEngine:
             self._start(State.APPEARING, now)
 
     def start_room_capture(self, now: Optional[float] = None, delay_s: float = 3.0) -> None:
-        """Countdown capture: you get `delay_s` seconds to leave, then the frame is taken as the
-        room no matter what the detector thinks. Also brings you back if you were 'gone'."""
+        """Countdown capture: you get `delay_s` seconds to leave. When it ends the frame is only
+        taken if no face, no hand and (almost) no body is visible for a few frames in a row;
+        otherwise it waits, and the old room is kept. Also brings you back if you were 'gone'."""
         now = time.monotonic() if now is None else now
         self.state = State.PRESENT
         self.fx.reset()
         self.trigger = GestureTrigger(hold_s=self.trigger.hold_s)
         self.capture_at = now + delay_s
+        self.capture_blocked = False
+        self._clean_frames = 0
+        self._blocked_since: Optional[float] = None
+        self._told = False
 
     def capture_countdown(self, now: float) -> Optional[float]:
         return None if self.capture_at is None else max(0.0, self.capture_at - now)
@@ -82,11 +91,25 @@ class GokuEngine:
     def process(self, frame: np.ndarray, now: Optional[float] = None) -> np.ndarray:
         now = time.monotonic() if now is None else now
         if self.capture_at is not None:
+            obs = self.vision.observe(frame, int(now * 1000))
             if now >= self.capture_at:
-                self.capture_at = None
-                self.bg.set_plate(frame)
-                self.on_event("room_captured")
-            self.vision.observe(frame, int(now * 1000))   # keep the video-mode timestamps flowing
+                body = float((obs.person_mask > 0.5).mean())
+                someone = bool(obs.hands) or obs.face is not None
+                if self._blocked_since is None:
+                    self._blocked_since = now
+                # A face or hand is never accepted. A small body blob alone is accepted after
+                # 4 extra seconds, since a chair or poster can fool the body model forever.
+                clean = not someone and (body < 0.01 or (body < 0.08 and now - self._blocked_since > 4.0))
+                self._clean_frames = self._clean_frames + 1 if clean else 0
+                self.capture_blocked = self._clean_frames == 0
+                if self._clean_frames >= 3:
+                    self.capture_at = None
+                    self.capture_blocked = False
+                    self.bg.set_plate(frame)
+                    self.on_event("room_captured")
+                elif self.capture_blocked and self._clean_frames == 0 and not getattr(self, "_told", False):
+                    self._told = True
+                    self.on_event("room_blocked")
             return frame
         obs = self.vision.observe(frame, int(now * 1000))
 
