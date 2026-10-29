@@ -26,7 +26,7 @@ A virtual webcam that watches for Goku's *Instant Transmission* pose and telepor
 | | |
 |---|---|
 | 🫡 **The pose** | Index and middle finger straight and **together**, ring and pinky curled, fingertips on your **forehead**. Hold for half a second. |
-| ⚡ **The teleport** | Vertical ki streaks run up your body, you flicker in and out like the anime, and you're gone, with a few streaks hanging in the air. 0.7s, all drawn in code, with a *shyun* sound. |
+| ⚡ **The teleport** | Timed frame by frame against the original reel: thin lines rain over the frame, you cut out, a glowing outline of you hangs in the air and fades. About 0.3s, all drawn in code, with your sound on every vanish and return. |
 | 🏠 **The empty room** | Step out of frame for 1 second and your real empty room is captured. While you're gone, that's what the meeting sees. |
 | 🔁 **Coming back** | Lower your hand, do the pose again, and the animation plays in reverse. |
 | 🔒 **Private** | Everything runs on your machine. No uploads, no accounts, no recording. |
@@ -64,10 +64,10 @@ MediaPipe's hand landmarker gives 21 points per hand. A finger counts as *straig
 Hold for 0.5s (one dropped frame is forgiven). After a teleport you have to lower your hand before the next one counts, so holding the pose never makes you flicker in and out.
 
 **3. The empty room**: `goku_transmission/background.py`
-When the segmenter sees nobody for 0.7s (you stepped out), that frame becomes the room plate. After that it only drifts slowly with the lighting, using pixels well away from you, and learning pauses while your hands move so a fast arm can never paint a ghost into the room. Until the room is captured, teleporting is blocked with a hint, because a guessed room looks like a smeared ghost (`--allow-guess` overrides this).
+When the segmenter sees nobody for 0.7s (you stepped out), that frame becomes the room plate. After that it only follows slow lighting changes on pixels that still look like the room, and it is frozen while you are gone, so nothing in front of the camera (a missed arm, your shadow) can get baked into the room. Until the room is captured, teleporting is blocked with a hint, because a guessed room looks like a smeared ghost (`--allow-guess` overrides this).
 
 **4. The teleport**: `goku_transmission/effects.py`
-One function of progress `t ∈ [0, 1]`: **charge** (vertical cyan/white streaks scroll up over your silhouette, rim glow) → **flicker** (you blink on, off, on, off with a tiny jitter, like the anime) → **gone** (the streaks flare and fade where you stood). Reappearing runs `t` backwards. It only touches your bounding box and drops to half resolution for big boxes, so it costs a few milliseconds.
+Matched frame by frame to the reference reel at 30 fps. **Vanish:** 2 frames of thin white and dark vertical lines over the whole picture while you're still there → hard cut to the empty room with a faint afterimage and a glowing outline of your silhouette → 6 frames where only the outline and lines remain, fading out. **Reappear:** outline flashes on the empty room → you snap back in with a one-frame sideways jolt under the lines → the lines thin out. It's a cut, not a fade, which is what sells the teleport.
 
 **Speed.** The webcam is read on its own thread (always the newest frame, never a backlog), the models run on a 640 px copy, face detection runs every 3rd frame, and only one hand is tracked. In testing it held about 28 to 30 fps at 720p on a modest ARM CPU, including during the animation.
 
@@ -133,8 +133,8 @@ First run downloads three small MediaPipe models (~8 MB) into `models/`.
 python -m goku_transmission --camera 1                # pick another webcam
 python -m goku_transmission --width 1920 --height 1080 --fps 30
 python -m goku_transmission --hold 0.8                # require a longer hold
-python -m goku_transmission --anim 1.0                # slower, more dramatic teleport
-python -m goku_transmission --sound shyun.wav         # your own teleport sound (.wav)
+python -m goku_transmission --anim 0.6                # slower teleport (default 0.3s, like the reel)
+python -m goku_transmission --sound shyun.mp3         # your own teleport sound (.mp3 / .wav)
 python -m goku_transmission --allow-guess             # teleport before the room was captured
 python -m goku_transmission --background room.jpg     # use a photo of your empty room
 python -m goku_transmission --virtual-backend unitycapture   # Windows alternative to OBS
@@ -145,7 +145,7 @@ python -m goku_transmission --input me.mp4 --output out.mp4  # process a recorde
 python -m goku_transmission --self-test               # check the install without a webcam
 ```
 
-**Sound:** a *shyun* is synthesized at runtime, so no copyrighted audio ships with the repo. Want the real anime sound? Save it as `sounds/teleport.wav` (gitignored, stays on your PC) or pass `--sound file.wav`. It plays on **your** speakers only and never goes into the call.
+**Sound:** plays every time you vanish and every time you reappear. Put your sound in the `sounds/` folder as `teleport.mp3` or `teleport.wav` (gitignored, it stays on your PC; no anime audio ships with the repo), or pass `--sound file.mp3`. Without one, a synthesized *shyun* plays. MP3 works out of the box on Windows and macOS. It plays on **your** speakers only and never goes into the call.
 
 ---
 

@@ -1,2 +1,3 @@
-Drop a file named teleport.wav here to use your own teleport sound (16-bit PCM WAV works everywhere).
-Not committed: *.wav in this folder is gitignored, so you can use audio you do not own the rights to locally.
+Drop your teleport sound here as `teleport.mp3` or `teleport.wav`. It plays every time you vanish and every time you reappear.
+
+Audio files in this folder are gitignored, so whatever you put here stays on your PC and never gets pushed.

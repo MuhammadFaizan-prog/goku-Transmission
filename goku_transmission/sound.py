@@ -1,10 +1,12 @@
 """Teleport sound.
 
-By default a short synthesized "shyun" (a bright zip that drops in pitch over
-a burst of air) is generated at runtime, so no copyrighted audio ships with
-the repo. Want the real anime sound? Pass ``--sound path/to/file.wav`` (or put
-a ``teleport.wav`` in the ``sounds/`` folder) and that file is played instead.
+By default a short synthesized "shyun" is generated at runtime, so no copyrighted audio
+ships with the repo. Want the real anime sound? Put it in the ``sounds/`` folder
+as ``teleport.mp3`` or ``teleport.wav`` (or pass ``--sound file``) and it plays
+every time you vanish and every time you come back.
 
+MP3 needs nothing extra on Windows (built-in MCI player) or macOS (afplay);
+on Linux it uses ffplay/mpg123/paplay, whichever is installed.
 Played on your speakers only. It never goes into the meeting.
 """
 from __future__ import annotations
@@ -19,7 +21,8 @@ from pathlib import Path
 
 import numpy as np
 
-USER_SOUND = Path(__file__).resolve().parent.parent / "sounds" / "teleport.wav"
+SOUNDS_DIR = Path(__file__).resolve().parent.parent / "sounds"
+USER_SOUNDS = [SOUNDS_DIR / "teleport.mp3", SOUNDS_DIR / "teleport.wav"]
 _custom: Path | None = None
 _generated: Path | None = None
 
@@ -57,27 +60,78 @@ def sound_path() -> Path:
     global _generated
     if _custom and _custom.exists():
         return _custom
-    if USER_SOUND.exists():
-        return USER_SOUND
+    for f in USER_SOUNDS:
+        if f.exists():
+            return f
     if _generated is None or not _generated.exists():
         _generated = make_shyun_wav(Path(tempfile.gettempdir()) / "goku_transmission_shyun.wav")
     return _generated
 
 
+class _WinPlayer:
+    """One long-lived thread owns the MCI device (MCI devices belong to the thread that opened them)."""
+
+    def __init__(self):
+        import queue
+        self.q: "queue.Queue[str]" = queue.Queue()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self):
+        import ctypes
+        mci = ctypes.windll.winmm.mciSendStringW
+        opened = None
+        while True:
+            p = self.q.get()
+            try:
+                if p.lower().endswith(".wav"):
+                    import winsound
+                    winsound.PlaySound(p, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+                    continue
+                if opened != p:
+                    if opened:
+                        mci("close goku_snd", None, 0, None)
+                    err = mci(f'open "{p}" type mpegvideo alias goku_snd', None, 0, None)
+                    if err:
+                        print(f"[sound] Windows couldn't open {p} (MCI error {err})")
+                        opened = None
+                        continue
+                    opened = p
+                mci("play goku_snd from 0", None, 0, None)   # restarts even if still playing
+            except Exception as e:  # noqa: BLE001
+                print(f"[sound] couldn't play: {e}")
+
+
+_win: _WinPlayer | None = None
+
+
+def _unix_cmd(p: str) -> list[str] | None:
+    import shutil
+    if sys.platform == "darwin":
+        return ["afplay", p]
+    if p.lower().endswith(".wav") and shutil.which("aplay"):
+        return ["aplay", "-q", p]
+    for cmd in (["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", p], ["mpg123", "-q", p], ["paplay", p]):
+        if shutil.which(cmd[0]):
+            return cmd
+    return None
+
+
 def play() -> None:
+    """Fire and forget. Called on every vanish and every reappear."""
+    global _win
     if os.environ.get("GOKU_MUTE") == "1":
         return
-
-    def _run():
-        try:
-            p = str(sound_path())
-            if sys.platform.startswith("win"):
-                import winsound
-                winsound.PlaySound(p, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-            elif sys.platform == "darwin":
-                subprocess.Popen(["afplay", p], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                subprocess.Popen(["aplay", "-q", p], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception as e:  # noqa: BLE001
-            print(f"[sound] couldn't play: {e}")
-    threading.Thread(target=_run, daemon=True).start()
+    try:
+        p = str(sound_path())
+        if sys.platform.startswith("win"):
+            if _win is None:
+                _win = _WinPlayer()
+            _win.q.put(p)
+            return
+        cmd = _unix_cmd(p)
+        if cmd is None:
+            print("[sound] no audio player found (install ffmpeg or mpg123)")
+            return
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:  # noqa: BLE001
+        print(f"[sound] couldn't play: {e}")

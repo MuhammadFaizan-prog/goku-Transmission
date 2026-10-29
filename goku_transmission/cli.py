@@ -28,8 +28,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--fps", type=int, default=30)
     p.add_argument("--hold", type=float, default=0.5, help="seconds to hold the pose (default 0.5)")
-    p.add_argument("--anim", type=float, default=0.7, help="teleport animation length in seconds (default 0.7)")
-    p.add_argument("--sound", help="play this .wav on teleport instead of the built-in one")
+    p.add_argument("--anim", type=float, default=0.3, help="teleport animation length in seconds (default 0.3, like the reel)")
+    p.add_argument("--sound", help="play this .mp3/.wav on every vanish and reappear (default: sounds/teleport.mp3|wav, else a built-in one)")
     p.add_argument("--background", help="use this image as the empty-room plate instead of learning it")
     p.add_argument("--allow-guess", action="store_true",
                    help="allow teleporting before the empty room was captured (the room behind you is guessed)")

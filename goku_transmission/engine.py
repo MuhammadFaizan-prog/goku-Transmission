@@ -25,7 +25,7 @@ class State(str, Enum):
 
 
 class GokuEngine:
-    def __init__(self, vision, *, hold_s: float = 0.5, anim_s: float = 0.7, face_memory_s: float = 2.0,
+    def __init__(self, vision, *, hold_s: float = 0.5, anim_s: float = 0.3, face_memory_s: float = 2.0,
                  pose_cfg: PoseConfig = PoseConfig(), on_event: Optional[Callable[[str], None]] = None,
                  debug: bool = False, require_clean_room: bool = True):
         self.vision = vision
@@ -118,5 +118,6 @@ class GokuEngine:
             self.state = done
             self.on_event(done.value)
             return plate.copy() if done == State.GONE else frame
-        progress = t if self.state == State.VANISHING else 1.0 - t
-        return self.fx.render(frame, plate, mask, progress)
+        if self.state == State.VANISHING:
+            return self.fx.render(frame, plate, mask, t)
+        return self.fx.render_appear(frame, plate, mask, t)

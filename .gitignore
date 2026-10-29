@@ -10,3 +10,4 @@ models/
 build/
 dist/
 sounds/*.wav
+sounds/*.mp3

@@ -195,3 +195,22 @@ def test_room_captured_when_user_steps_out_then_teleports():
         t += 1 / 30
     assert eng.state == State.GONE
     assert np.array_equal(eng.process(frame_with_person(), t), ROOM)
+
+
+def test_user_sound_mp3_is_picked(tmp_path, monkeypatch):
+    from goku_transmission import sound
+    mp3 = tmp_path / "teleport.mp3"
+    mp3.write_bytes(b"ID3")
+    monkeypatch.setattr(sound, "USER_SOUNDS", [mp3, tmp_path / "teleport.wav"])
+    sound.set_custom(None)
+    assert sound.sound_path() == mp3
+
+
+def test_sound_plays_on_vanish_and_reappear(monkeypatch):
+    from goku_transmission import cli, sound
+    played = []
+    monkeypatch.setattr(sound, "play", lambda: played.append(1))
+    h = cli._events(mute=False)
+    for e in ("vanishing", "gone", "appearing", "present", "vanishing", "gone", "appearing", "present"):
+        h(e)
+    assert len(played) == 4
