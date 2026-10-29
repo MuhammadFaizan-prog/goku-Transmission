@@ -21,12 +21,13 @@ import numpy as np
 class BackgroundModel:
     def __init__(self, drift_rate: float = 0.02, learn_threshold: float = 0.15,
                  empty_fraction: float = 0.004, empty_hold_s: float = 0.7,
-                 inpaint_every_s: float = 1.0):
+                 inpaint_every_s: float = 1.0, drift_max_diff: int = 18):
         self.drift_rate = drift_rate
         self.learn_threshold = learn_threshold
         self.empty_fraction = empty_fraction
         self.empty_hold_s = empty_hold_s
         self.inpaint_every_s = inpaint_every_s
+        self.drift_max_diff = drift_max_diff
         self.plate: np.ndarray | None = None      # float32 HxWx3
         self.seen: np.ndarray | None = None       # uint8 HxW, 255 = observed as room
         self.clean = False                        # True once a person-free snapshot was taken
@@ -53,7 +54,7 @@ class BackgroundModel:
 
     def reset(self) -> None:
         self.__init__(self.drift_rate, self.learn_threshold, self.empty_fraction,
-                      self.empty_hold_s, self.inpaint_every_s)
+                      self.empty_hold_s, self.inpaint_every_s, self.drift_max_diff)
 
     # -- learning -------------------------------------------------------
     def room_mask(self, person_mask: np.ndarray) -> np.ndarray:
@@ -67,9 +68,11 @@ class BackgroundModel:
         room = np.where(person > 0, 0, 255).astype(np.uint8)
         return cv2.resize(room, (w, h), interpolation=cv2.INTER_NEAREST)
 
-    def update(self, frame: np.ndarray, person_mask: np.ndarray, now: float = 0.0, frozen: bool = False) -> None:
-        # 1) clean snapshot when nobody is in frame for a moment
-        if float((person_mask > 0.5).mean()) < self.empty_fraction:
+    def update(self, frame: np.ndarray, person_mask: np.ndarray, now: float = 0.0, frozen: bool = False,
+               someone_seen: bool = False) -> None:
+        # 1) clean snapshot when nobody is in frame for a moment. The segmenter alone can miss a
+        #    person on a washed-out webcam, so a visible face or hand also means "not empty".
+        if not someone_seen and float((person_mask > 0.5).mean()) < self.empty_fraction:
             if self._empty_since is None:
                 self._empty_since = now
             if now - self._empty_since >= self.empty_hold_s:
@@ -91,7 +94,11 @@ class BackgroundModel:
             self._dirty = True
             return
         if self.clean:
-            cv2.accumulateWeighted(frame, self.plate, self.drift_rate, mask=room)   # follow lighting only
+            # Follow slow lighting changes only: a pixel that differs a lot from the room is
+            # something in front of it (you, an arm the mask missed) and must never be learned.
+            diff = cv2.absdiff(frame, cv2.convertScaleAbs(self.plate)).max(axis=2)
+            calm = cv2.bitwise_and(room, (diff < self.drift_max_diff).astype(np.uint8) * 255)
+            cv2.accumulateWeighted(frame, self.plate, self.drift_rate, mask=calm)
             self._dirty = True
             return
         new = cv2.bitwise_and(room, cv2.bitwise_not(self.seen))

@@ -67,6 +67,36 @@ def test_no_ghost_after_clean_snapshot():
     assert diff[PERSON_BOX].max() == 0           # nothing of you leaked into the room
 
 
+def test_arm_the_mask_missed_never_leaks_into_room():
+    """Real bug from a Windows test: segmenter missed a raised arm and it got painted into the room."""
+    bg = BackgroundModel()
+    bg.set_plate(ROOM)
+    arm = (slice(20, 120), slice(40, 80))        # far outside the mask, so it isn't covered by dilation
+    for i in range(300):
+        f = frame_with_person()
+        f[arm] = (20, 90, 160)
+        bg.update(f, person_mask(), i / 30)
+    diff = np.abs(bg.render(10.0).astype(int) - ROOM.astype(int))
+    assert diff[arm].max() == 0
+
+
+def test_lighting_still_followed_after_clean_snapshot():
+    bg = BackgroundModel()
+    bg.set_plate(ROOM)
+    dimmer = np.clip(ROOM.astype(int) - 8, 0, 255).astype(np.uint8)
+    for i in range(300):
+        bg.update(dimmer, np.zeros((H, W), np.float32) + 0.0, i / 30, someone_seen=True)
+    assert np.abs(bg.render(10.0).astype(int) - dimmer.astype(int)).max() <= 1
+
+
+def test_no_snapshot_while_face_is_visible():
+    """A washed-out webcam can give an empty mask while you sit there; a face means not empty."""
+    bg = BackgroundModel(empty_hold_s=0.5)
+    for i in range(60):
+        bg.update(frame_with_person(), np.zeros((H, W), np.float32), i / 30, someone_seen=True)
+    assert not bg.clean
+
+
 def test_learning_pauses_while_hands_move():
     bg = BackgroundModel()
     bg.update(frame_with_person(), person_mask(), 0.0)

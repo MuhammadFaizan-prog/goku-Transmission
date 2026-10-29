@@ -73,8 +73,11 @@ class GokuEngine:
         # Learn the room only from pixels where you're not, and only while you're
         # visible as yourself (not mid-animation, when the mask is about to lie).
         # Pause while hands are up: the mask lags fast hands and would paint a ghost arm into the room.
-        if self.state in (State.PRESENT, State.GONE):
-            self.bg.update(frame, obs.person_mask, now, frozen=bool(obs.hands))
+        # While GONE you are still sitting there, so the room plate is frozen: learning then
+        # could only paint you back into it. Recapturing happens when you step out (or press B).
+        if self.state == State.PRESENT or (self.state == State.GONE and not self.bg.ready):
+            self.bg.update(frame, obs.person_mask, now, frozen=bool(obs.hands),
+                           someone_seen=bool(obs.hands) or obs.face is not None)
 
         if obs.face is not None:
             self._face, self._face_t = obs.face, now
