@@ -145,7 +145,7 @@ python -m goku_transmission --input me.mp4 --output out.mp4  # process a recorde
 python -m goku_transmission --self-test               # check the install without a webcam
 ```
 
-**Sound:** plays every time you vanish and every time you reappear. Put your sound in the `sounds/` folder as `teleport.mp3` or `teleport.wav` (gitignored, it stays on your PC; no anime audio ships with the repo), or pass `--sound file.mp3`. Without one, a synthesized *shyun* plays. MP3 works out of the box on Windows and macOS. It plays on **your** speakers only and never goes into the call.
+**Sound:** the Instant Transmission sound plays every time you vanish and every time you reappear. Want a different one? Put `teleport.mp3` or `teleport.wav` in the `sounds/` folder (gitignored) or pass `--sound file.mp3`. MP3 works out of the box on Windows and macOS. It plays on **your** speakers only and never goes into the call.
 
 ---
 

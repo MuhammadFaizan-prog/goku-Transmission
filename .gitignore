@@ -11,3 +11,4 @@ build/
 dist/
 sounds/*.wav
 sounds/*.mp3
+!sounds/goku_teleport.wav

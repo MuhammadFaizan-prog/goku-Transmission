@@ -23,6 +23,7 @@ import numpy as np
 
 SOUNDS_DIR = Path(__file__).resolve().parent.parent / "sounds"
 USER_SOUNDS = [SOUNDS_DIR / "teleport.mp3", SOUNDS_DIR / "teleport.wav"]
+DEFAULT_SOUND = SOUNDS_DIR / "goku_teleport.wav"   # the Instant Transmission sound, played by default
 _custom: Path | None = None
 _generated: Path | None = None
 
@@ -63,6 +64,8 @@ def sound_path() -> Path:
     for f in USER_SOUNDS:
         if f.exists():
             return f
+    if DEFAULT_SOUND.exists():
+        return DEFAULT_SOUND
     if _generated is None or not _generated.exists():
         _generated = make_shyun_wav(Path(tempfile.gettempdir()) / "goku_transmission_shyun.wav")
     return _generated

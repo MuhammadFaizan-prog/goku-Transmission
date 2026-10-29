@@ -1,3 +1,5 @@
-Drop your teleport sound here as `teleport.mp3` or `teleport.wav`. It plays every time you vanish and every time you reappear.
+`goku_teleport.wav` is the Instant Transmission sound and plays by default on every vanish and every reappear.
 
-Audio files in this folder are gitignored, so whatever you put here stays on your PC and never gets pushed.
+Want a different one? Drop `teleport.mp3` or `teleport.wav` here (gitignored, stays on your PC) or pass `--sound file`.
+
+The Instant Transmission sound effect belongs to its rights holders (Dragon Ball, Toei Animation) and is included here for a non-commercial fan project.
